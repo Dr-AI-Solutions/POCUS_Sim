@@ -9,7 +9,7 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; touch-action: none; }
         .sim-container { background-color: #1a202c; }
         
-        /* --- EL TRANSDUCTOR DEL MAPA --- */
+        /* --- EL TRANSDUCTOR --- */
         #probe {
             width: 50px;
             height: 80px;
@@ -23,8 +23,6 @@
             filter: drop-shadow(0 10px 8px rgba(0,0,0,0.6));
         }
         #probe:active { cursor: grabbing; transform: translate(-50%, -50%) scale(0.95); }
-        
-        /* Rotación a transversal (90 grados antihorario) */
         #probe.transversal { transform: translate(-50%, -50%) rotate(-90deg); }
         #probe.transversal:active { transform: translate(-50%, -50%) rotate(-90deg) scale(0.95); }
 
@@ -44,14 +42,7 @@
             border-width: 3px;
             box-shadow: 0 0 15px rgba(72, 187, 120, 0.5);
         }
-        .hotspot span {
-            font-size: 0.6rem;
-            color: white;
-            font-weight: bold;
-            text-align: center;
-            pointer-events: none;
-            text-shadow: 1px 1px 2px black;
-        }
+        .hotspot span { font-size: 0.6rem; color: white; font-weight: bold; text-align: center; text-shadow: 1px 1px 2px black; }
 
         .static-noise {
             background-image: repeating-radial-gradient(circle at 17% 32%, #222, #050505 0.00085px);
@@ -59,10 +50,8 @@
         }
         @keyframes noise { 0% { background-position: 0 0; } 100% { background-position: 10px 10px; } }
 
-        .svg-content { width: 100%; height: 100%; }
-        .protocol-btn.active { background-color: #3b82f6; color: white; border-color: #60a5fa; }
-        
-        /* Clases dinámicas manejadas por JS */
+        /* SVG Scaling fixes */
+        .svg-content { width: 100%; height: 100%; object-fit: contain; }
         .svg-anat-container { transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
         .rotate-long { transform: rotate(-90deg) scale(0.85); }
         .rotate-trans { transform: rotate(90deg) scale(0.85); }
@@ -71,24 +60,18 @@
         .shift-organ { transition: transform 0.5s ease; }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-100 h-screen overflow-hidden flex flex-col">
+<body class="bg-gray-900 text-gray-100 h-screen w-screen overflow-hidden flex flex-col">
 
-    <!-- LIBRERÍA DE SVGs (Para reusar el mismo transductor en todos los paneles) -->
+    <!-- LIBRERÍA DE SVGs -->
     <svg style="display:none;">
         <defs>
             <g id="detailed-probe">
-                <!-- Cable apuntando al usuario -->
                 <path d="M25 65 C25 80, 15 90, 25 105" stroke="#475569" stroke-width="6" fill="none" stroke-linecap="round"/>
-                <!-- Base del mango -->
                 <rect x="15" y="45" width="20" height="25" rx="4" fill="#334155"/>
-                <!-- Mango Principal -->
                 <rect x="12" y="15" width="26" height="35" rx="6" fill="#94a3b8"/>
                 <line x1="16" y1="20" x2="16" y2="45" stroke="#64748b" stroke-width="2" stroke-linecap="round"/>
                 <line x1="34" y1="20" x2="34" y2="45" stroke="#64748b" stroke-width="2" stroke-linecap="round"/>
-                <!-- Cabezal (Lo que toca la piel) -->
                 <path d="M5 20 Q25 -10 45 20 L38 25 L12 25 Z" fill="#1e293b"/>
-                
-                <!-- LA MARCA / PUNTO AZUL -->
                 <circle cx="6" cy="12" r="6" fill="#60a5fa" stroke="#fff" stroke-width="1.5">
                     <animate attributeName="r" values="5;7;5" dur="1.5s" repeatCount="indefinite" />
                 </circle>
@@ -97,42 +80,39 @@
     </svg>
 
     <!-- Header y Controles -->
-    <header class="bg-gray-800 p-3 shadow-md flex flex-wrap justify-between items-center z-20 gap-4 border-b border-gray-700">
-        <div>
+    <header class="bg-gray-800 px-4 py-2 shadow-md flex flex-wrap justify-between items-center z-20 border-b border-gray-700 flex-shrink-0">
+        <div class="flex items-center gap-4">
             <h1 class="text-xl font-bold text-blue-400">Simulador POCUS</h1>
-            <div class="flex gap-2 mt-2">
-                <button onclick="setProtocol('efast')" id="btn-efast" class="protocol-btn active px-3 py-1 rounded border border-gray-600 text-gray-300 font-semibold text-sm">e-FAST</button>
-                <button onclick="setProtocol('rush')" id="btn-rush" class="protocol-btn px-3 py-1 rounded border border-gray-600 text-gray-300 font-semibold text-sm">RUSH</button>
+            <div class="flex gap-2">
+                <button onclick="setProtocol('efast')" id="btn-efast" class="bg-blue-600 text-white px-3 py-1 rounded border border-blue-500 font-semibold text-sm">e-FAST</button>
+                <button onclick="setProtocol('rush')" id="btn-rush" class="bg-transparent text-gray-300 px-3 py-1 rounded border border-gray-600 font-semibold text-sm">RUSH</button>
             </div>
         </div>
 
-        <div class="flex items-center gap-4 bg-gray-900 p-2 rounded-lg border border-gray-700">
-            <button id="pathology-btn" class="bg-red-900/80 hover:bg-red-700 text-red-200 border border-red-500 px-3 py-2 rounded shadow font-bold transition flex items-center gap-2 text-sm hidden">
+        <div class="flex items-center gap-4 bg-gray-900 p-1.5 rounded-lg border border-gray-700">
+            <button id="pathology-btn" class="bg-red-900/80 hover:bg-red-700 text-red-200 border border-red-500 px-3 py-1.5 rounded font-bold transition flex items-center gap-2 text-sm hidden">
                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>
-                <span>Simular Trauma (FAST +)</span>
+                <span>Sangrado (FAST +)</span>
             </button>
-
-            <button id="rotate-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded shadow font-bold transition flex items-center gap-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                Rotar (Tecla R)
+            <button id="rotate-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-1.5 rounded font-bold transition flex items-center gap-2 text-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                Rotar (R)
             </button>
-            <div class="text-right border-l border-gray-700 pl-4">
-                <div class="text-xs text-gray-400 uppercase tracking-wide">Punto Azul (Marca) apunta:</div>
-                <div id="orientation-status" class="font-black text-lg text-blue-400">HACIA CABEZA</div>
+            <div class="text-right border-l border-gray-700 pl-3">
+                <div class="text-[10px] text-gray-400 uppercase">Marca Azul apunta:</div>
+                <div id="orientation-status" class="font-black text-base text-blue-400">HACIA CABEZA</div>
             </div>
         </div>
     </header>
 
-    <!-- Contenedor Principal -->
-    <main class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-1 p-2 bg-black h-full relative">
+    <!-- Contenedor Principal (Grid responsive estricto) -->
+    <main class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-1 p-1 bg-black min-h-0 overflow-hidden">
         
         <!-- PANEL 1: MAPA PACIENTE -->
-        <div class="bg-gray-800 rounded-lg relative overflow-hidden border border-gray-700 flex flex-col select-none" id="map-container">
-            <div class="bg-gray-700 text-center py-1 text-sm font-semibold uppercase tracking-wider text-gray-300 z-10 relative shadow">1. Paciente (Vista Anterior)</div>
-            
+        <div class="bg-gray-800 rounded-lg relative border border-gray-700 flex flex-col min-h-0 select-none overflow-hidden" id="map-container">
+            <div class="bg-gray-700 text-center py-1 text-xs font-semibold uppercase text-gray-300 z-10 flex-shrink-0">1. Paciente</div>
             <div class="relative flex-1 w-full h-full flex items-center justify-center">
-                <svg class="h-full w-full opacity-70" viewBox="0 0 200 400" preserveAspectRatio="xMidYMid meet">
-                    <!-- Silueta Paciente -->
+                <svg class="h-[90%] w-[90%] opacity-70" viewBox="0 0 200 400" preserveAspectRatio="xMidYMid meet">
                     <path d="M80 20 C80 10, 120 10, 120 20 L115 50 L85 50 Z" fill="#94a3b8" />
                     <path d="M40 70 C40 50, 160 50, 160 70 L170 250 C170 350, 140 380, 100 380 C60 380, 30 350, 30 250 Z" fill="#cbd5e1" stroke="#64748b" stroke-width="2"/>
                     <path d="M40 70 L10 150 L25 150 L45 90" fill="#94a3b8"/>
@@ -142,46 +122,47 @@
                     <path d="M50 160 Q100 120 150 160" fill="none" stroke="#64748b" stroke-width="2" stroke-dasharray="4"/>
                 </svg>
 
-                <div class="hotspot protocol-efast protocol-rush bg-red-500/20 border-red-400" data-zone="morison" style="top: 55%; left: 15%; width: 25%; height: 12%;"><span>FLANCO<br>DER.</span></div>
-                <div class="hotspot protocol-efast protocol-rush bg-yellow-500/20 border-yellow-400" data-zone="periesplenico" style="top: 55%; left: 60%; width: 25%; height: 12%;"><span>FLANCO<br>IZQ.</span></div>
-                <div class="hotspot protocol-efast protocol-rush bg-purple-500/20 border-purple-400" data-zone="pelvico" style="top: 75%; left: 35%; width: 30%; height: 12%;"><span>PÉLVICA</span></div>
+                <div class="hotspot bg-red-500/20 border-red-400 protocol-efast protocol-rush" data-zone="morison" style="top: 55%; left: 15%; width: 25%; height: 12%;"><span>FLANCO<br>DER.</span></div>
+                <div class="hotspot bg-yellow-500/20 border-yellow-400 protocol-efast protocol-rush" data-zone="periesplenico" style="top: 55%; left: 60%; width: 25%; height: 12%;"><span>FLANCO<br>IZQ.</span></div>
+                <div class="hotspot bg-purple-500/20 border-purple-400 protocol-efast protocol-rush" data-zone="pelvico" style="top: 75%; left: 35%; width: 30%; height: 12%;"><span>PÉLVICA</span></div>
                 
                 <div id="probe">
-                    <svg viewBox="0 0 50 105" class="w-full h-full">
-                        <use href="#detailed-probe" />
-                    </svg>
+                    <svg viewBox="0 0 50 105" class="w-full h-full"><use href="#detailed-probe" /></svg>
                 </div>
             </div>
         </div>
 
         <!-- PANEL 2: PANTALLA ECO -->
-        <div class="bg-black rounded-lg border-2 border-gray-700 flex flex-col relative overflow-hidden">
-            <div class="bg-gray-800 text-center py-1 px-4 flex justify-between items-center z-20 relative border-b border-gray-700">
+        <div class="bg-black rounded-lg border-2 border-gray-700 flex flex-col min-h-0 relative overflow-hidden">
+            <div class="bg-gray-800 text-center py-1 px-4 flex justify-between items-center z-20 border-b border-gray-700 flex-shrink-0">
                 <div class="flex items-center gap-2">
-                    <span class="text-sm font-semibold uppercase tracking-wider text-green-400">2. Ecógrafo</span>
-                    <div class="w-3 h-3 bg-blue-400 rounded-full animate-pulse shadow-[0_0_10px_#60a5fa]" title="Marca"></div>
+                    <span class="text-xs font-semibold uppercase text-green-400">2. Ecógrafo</span>
+                    <div class="w-2.5 h-2.5 bg-blue-400 rounded-full animate-pulse shadow-[0_0_8px_#60a5fa]"></div>
                 </div>
-                <button id="toggle-guides-btn" class="text-xs bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded border border-gray-500 transition shadow">Mostrar Guías</button>
+                <button id="toggle-guides-btn" class="text-[10px] bg-gray-700 hover:bg-gray-600 text-white px-2 py-0.5 rounded border border-gray-500 transition shadow">Mostrar Guías</button>
             </div>
             
             <div class="relative flex-1 w-full h-full" id="echo-container">
                 
-                <div class="absolute right-2 top-10 bottom-10 flex flex-col justify-between text-[10px] text-gray-400 font-bold z-10 pointer-events-none opacity-80 items-end w-24">
-                    <div class="bg-black/80 px-1 py-0.5 rounded border border-gray-600 text-right uppercase text-green-300">Superficial<br><span class="text-[8px] font-normal text-gray-400">Transductor ↑</span></div>
-                    <div class="flex-1 w-0.5 bg-gradient-to-b from-green-500/50 via-gray-600/50 to-indigo-500/50 my-1 mr-1"></div>
-                    <div class="bg-black/80 px-1 py-0.5 rounded border border-gray-600 text-right uppercase text-indigo-300">Profundo<br><span class="text-[8px] font-normal text-gray-400">Distal ↓</span></div>
-                </div>
-
                 <div id="echo-noise" class="absolute inset-0 static-noise flex items-center justify-center view-layer">
-                    <span class="bg-black bg-opacity-70 border border-gray-600 text-gray-300 px-4 py-2 rounded-lg text-sm shadow-lg">Arrastra el transductor...</span>
+                    <span class="bg-black/70 border border-gray-600 text-gray-300 px-4 py-2 rounded text-sm">Arrastra el transductor...</span>
                 </div>
 
                 <!-- ================= VISTAS MORISON ================= -->
+                <!-- TEXTOS INTEGRADOS EN SVG PARA ESCALADO PERFECTO -->
                 <div id="echo-morison-long" class="absolute inset-0 hidden bg-black view-layer">
-                    <svg class="svg-content" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <svg class="svg-content" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                        <!-- Etiquetas Fijas SVG -->
+                        <rect x="2" y="2" width="22" height="6" rx="1" fill="rgba(30,58,138,0.7)"/>
+                        <text x="13" y="6.2" font-size="3.5" fill="#bfdbfe" font-weight="bold" text-anchor="middle">CABEZA (Sup.)</text>
+                        <text x="96" y="6" font-size="3" fill="#9ca3af" text-anchor="end">PIES (Inf.)</text>
+                        
                         <path d="M30 0 L70 0 L100 100 L0 100 Z" fill="#111" />
+                        <!-- Diafragma -->
                         <path d="M10 30 Q30 20 60 40" stroke="#fff" stroke-width="3" fill="none" filter="blur(1px)"/>
+                        <!-- Hígado -->
                         <path d="M15 35 Q40 25 70 50 Q75 80 40 85 Q15 70 15 35" fill="#333" filter="blur(2px)"/>
+                        <!-- Morison -->
                         <path class="morison-normal-line" d="M40 85 Q55 70 50 55" stroke="#9ca3af" stroke-width="1.5" fill="none" filter="blur(0.5px)"/>
                         
                         <path class="patho-fluid opacity-0" d="M38 88 Q55 70 48 54 Q65 65 44 92 Z" fill="#000" stroke="#111" stroke-width="1"/>
@@ -198,33 +179,40 @@
                                 <text x="-5" y="5" font-size="4" fill="#93c5fd" font-weight="bold">Riñón</text>
                             </g>
                             <path d="M10 30 Q30 20 60 40" stroke="rgba(234, 179, 8, 0.6)" stroke-width="3" fill="none"/>
+                            <text x="25" y="28" font-size="3" fill="#fde047" font-weight="bold">Diafragma</text>
                         </g>
                     </svg>
-                    <div class="absolute top-2 left-6 text-[10px] bg-blue-900/80 text-blue-200 px-2 rounded border border-blue-500">CABEZA</div>
-                    <div class="absolute top-2 right-12 text-[10px] text-gray-400">PIES</div>
                 </div>
 
                 <div id="echo-morison-trans" class="absolute inset-0 hidden bg-black view-layer">
-                    <svg class="svg-content" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <svg class="svg-content" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                        <rect x="2" y="2" width="28" height="6" rx="1" fill="rgba(30,58,138,0.7)"/>
+                        <text x="16" y="6.2" font-size="3.5" fill="#bfdbfe" font-weight="bold" text-anchor="middle">DER. PACIENTE</text>
+                        <text x="96" y="6" font-size="3" fill="#9ca3af" text-anchor="end">IZQ. PACIENTE</text>
+
                         <path d="M30 0 L70 0 L100 100 L0 100 Z" fill="#111" />
                         <path d="M10 20 Q50 20 60 50 Q50 70 10 70 Z" fill="#333" filter="blur(2px)"/>
                         <circle cx="55" cy="60" r="15" fill="#222" filter="blur(1px)"/>
-                        <path d="M35 85 Q50 75 65 85 L75 100 L25 100 Z" fill="#000"/>
+                        <path d="M35 85 Q50 75 65 85 L75 100 L25 100 Z" fill="#000"/> <!-- Sombra negra espinal -->
                         
                         <g class="echo-overlay hidden">
                             <path d="M10 20 Q50 20 60 50 Q50 70 10 70 Z" fill="rgba(239, 68, 68, 0.3)"/>
                             <text x="25" y="45" font-size="4" fill="#fca5a5" font-weight="bold">Hígado</text>
                             <circle cx="55" cy="60" r="15" fill="rgba(59, 130, 246, 0.3)"/>
                             <text x="49" y="61" font-size="4" fill="#93c5fd" font-weight="bold">Riñón</text>
+                            <path d="M40 85 Q50 80 60 85" stroke="rgba(234, 179, 8, 0.6)" stroke-width="2" fill="none" />
+                            <text x="45" y="81" font-size="3" fill="#fde047" font-weight="bold">Columna</text>
                         </g>
                     </svg>
-                    <div class="absolute top-2 left-6 text-[10px] bg-blue-900/80 text-blue-200 px-2 rounded border border-blue-500">DER. PACIENTE</div>
-                    <div class="absolute top-2 right-12 text-[10px] text-gray-400">IZQ. PACIENTE</div>
                 </div>
 
                 <!-- ================= VISTAS ESPLÉNICO ================= -->
                 <div id="echo-periesplenico-long" class="absolute inset-0 hidden bg-black view-layer">
-                    <svg class="svg-content" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <svg class="svg-content" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                        <rect x="2" y="2" width="22" height="6" rx="1" fill="rgba(30,58,138,0.7)"/>
+                        <text x="13" y="6.2" font-size="3.5" fill="#bfdbfe" font-weight="bold" text-anchor="middle">CABEZA (Sup.)</text>
+                        <text x="96" y="6" font-size="3" fill="#9ca3af" text-anchor="end">PIES (Inf.)</text>
+
                         <path d="M30 0 L70 0 L100 100 L0 100 Z" fill="#111" />
                         <path d="M10 35 Q25 25 50 40" stroke="#fff" stroke-width="3" fill="none" filter="blur(1px)"/>
                         <path d="M15 40 Q35 30 50 55 Q40 65 15 50 Z" fill="#3a3a3a" filter="blur(1px)"/>
@@ -247,12 +235,14 @@
                             <path d="M10 35 Q25 25 50 40" stroke="rgba(234, 179, 8, 0.6)" stroke-width="3" fill="none"/>
                         </g>
                     </svg>
-                    <div class="absolute top-2 left-6 text-[10px] bg-blue-900/80 text-blue-200 px-2 rounded border border-blue-500">CABEZA</div>
-                    <div class="absolute top-2 right-12 text-[10px] text-gray-400">PIES</div>
                 </div>
 
                 <div id="echo-periesplenico-trans" class="absolute inset-0 hidden bg-black view-layer">
-                    <svg class="svg-content" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <svg class="svg-content" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                        <rect x="2" y="2" width="28" height="6" rx="1" fill="rgba(30,58,138,0.7)"/>
+                        <text x="16" y="6.2" font-size="3.5" fill="#bfdbfe" font-weight="bold" text-anchor="middle">DER. PACIENTE</text>
+                        <text x="96" y="6" font-size="3" fill="#9ca3af" text-anchor="end">IZQ. PACIENTE</text>
+
                         <path d="M30 0 L70 0 L100 100 L0 100 Z" fill="#111" />
                         <path d="M20 30 Q50 20 60 45 Q30 60 15 45 Z" fill="#3a3a3a" filter="blur(1px)"/>
                         <circle cx="65" cy="65" r="14" fill="#222" filter="blur(1px)"/>
@@ -263,15 +253,18 @@
                             <text x="30" y="45" font-size="4" fill="#d8b4fe" font-weight="bold">Bazo</text>
                             <circle cx="65" cy="65" r="14" fill="rgba(59, 130, 246, 0.3)"/>
                             <text x="59" y="66" font-size="4" fill="#93c5fd" font-weight="bold">Riñón</text>
+                            <path d="M40 90 Q50 85 60 90" stroke="rgba(234, 179, 8, 0.6)" stroke-width="2" fill="none" />
                         </g>
                     </svg>
-                    <div class="absolute top-2 left-6 text-[10px] bg-blue-900/80 text-blue-200 px-2 rounded border border-blue-500">DER. PACIENTE</div>
-                    <div class="absolute top-2 right-12 text-[10px] text-gray-400">IZQ. PACIENTE</div>
                 </div>
 
                 <!-- ================= VISTAS PÉLVICO ================= -->
                 <div id="echo-pelvico-long" class="absolute inset-0 hidden bg-black view-layer">
-                    <svg class="svg-content" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <svg class="svg-content" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                        <rect x="2" y="2" width="22" height="6" rx="1" fill="rgba(30,58,138,0.7)"/>
+                        <text x="13" y="6.2" font-size="3.5" fill="#bfdbfe" font-weight="bold" text-anchor="middle">CABEZA (Sup.)</text>
+                        <text x="96" y="6" font-size="3" fill="#9ca3af" text-anchor="end">PIES (Inf.)</text>
+
                         <path d="M30 0 L70 0 L100 100 L0 100 Z" fill="#111" />
                         <path d="M20 30 Q50 20 80 40 Q85 70 50 80 Q25 75 20 30 Z" fill="#050505" stroke="#fff" stroke-width="0.5" filter="blur(0.5px)"/>
                         <path d="M30 80 Q50 75 70 80 L80 100 L20 100 Z" fill="rgba(255,255,255,0.1)"/>
@@ -289,12 +282,14 @@
                             </g>
                         </g>
                     </svg>
-                    <div class="absolute top-2 left-6 text-[10px] bg-blue-900/80 text-blue-200 px-2 rounded border border-blue-500">CABEZA</div>
-                    <div class="absolute top-2 right-12 text-[10px] text-gray-400">PIES</div>
                 </div>
 
                 <div id="echo-pelvico-trans" class="absolute inset-0 hidden bg-black view-layer">
-                    <svg class="svg-content" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <svg class="svg-content" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                        <rect x="2" y="2" width="28" height="6" rx="1" fill="rgba(30,58,138,0.7)"/>
+                        <text x="16" y="6.2" font-size="3.5" fill="#bfdbfe" font-weight="bold" text-anchor="middle">DER. PACIENTE</text>
+                        <text x="96" y="6" font-size="3" fill="#9ca3af" text-anchor="end">IZQ. PACIENTE</text>
+
                         <path d="M30 0 L70 0 L100 100 L0 100 Z" fill="#111" />
                         <rect x="25" y="30" width="50" height="35" rx="15" fill="#050505" stroke="#fff" stroke-width="0.5" filter="blur(0.5px)"/>
                         <g class="shift-organ" data-shift="translate(0, 12)" data-normal="translate(0, 0)">
@@ -310,155 +305,150 @@
                             </g>
                         </g>
                     </svg>
-                    <div class="absolute top-2 left-6 text-[10px] bg-blue-900/80 text-blue-200 px-2 rounded border border-blue-500">DER. PACIENTE</div>
-                    <div class="absolute top-2 right-12 text-[10px] text-gray-400">IZQ. PACIENTE</div>
                 </div>
 
             </div>
         </div>
 
         <!-- PANEL 3: CORRELATO 3D -->
-        <div class="bg-gray-800 rounded-lg border border-gray-700 flex flex-col relative overflow-hidden">
-            <div class="bg-gray-700 text-center py-1 px-4 flex justify-between items-center z-20 relative shadow border-b border-gray-600">
-                <span class="text-sm font-semibold uppercase tracking-wider text-yellow-400">3. Anatomía 3D</span>
-                <button id="align-3d-btn" class="text-xs bg-yellow-900/80 hover:bg-yellow-700 text-yellow-100 px-2 py-1 rounded border border-yellow-600 transition flex items-center gap-1 shadow">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+        <div class="bg-gray-800 rounded-lg border border-gray-700 flex flex-col min-h-0 relative overflow-hidden">
+            <div class="bg-gray-700 text-center py-1 px-4 flex justify-between items-center z-20 border-b border-gray-600 flex-shrink-0">
+                <span class="text-xs font-semibold uppercase text-yellow-400">3. Anatomía 3D</span>
+                <button id="align-3d-btn" class="text-[10px] bg-yellow-900/80 hover:bg-yellow-700 text-yellow-100 px-2 py-0.5 rounded border border-yellow-600 transition flex items-center gap-1 shadow">
                     Alinear con Ecógrafo
                 </button>
             </div>
             
-            <div id="explanation-box" class="absolute bottom-0 left-0 right-0 bg-gray-900/95 p-4 z-20 border-t-2 border-yellow-600/50 text-sm h-1/3 overflow-y-auto backdrop-blur-sm transition-all duration-300">
-                <p class="text-gray-400 text-center mt-6 italic">Arrastra el transductor a una zona.</p>
-            </div>
+            <div class="relative flex-1 w-full flex flex-col bg-[#0f172a] min-h-0">
+                <!-- Zona gráfica SVG -->
+                <div class="relative flex-1 w-full min-h-0 flex items-center justify-center p-2" id="anat-container">
+                    
+                    <div id="anat-out" class="absolute inset-0 flex items-center justify-center view-layer">
+                        <svg class="w-16 h-16 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+                    </div>
 
-            <div class="relative flex-1 w-full h-2/3 bg-[#0f172a] flex items-center justify-center" id="anat-container">
-                
-                <div id="anat-out" class="absolute inset-0 flex items-center justify-center view-layer">
-                    <svg class="w-20 h-20 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+                    <!-- === MORISON === -->
+                    <div id="anat-morison-long" class="absolute inset-0 hidden p-2 flex items-center justify-center view-layer">
+                        <svg class="svg-content font-sans svg-anat-container" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                            <text x="50" y="5" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">CABEZA (Superior)</text>
+                            <text x="50" y="98" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">PIES (Inferior)</text>
+                            <text x="5" y="50" font-size="4" fill="#64748b" text-anchor="middle" transform="rotate(-90 5 50)">PROFUNDO (Posterior)</text>
+                            
+                            <path d="M25 15 Q35 50 25 85" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="2"/>
+                            <!-- Órganos -->
+                            <ellipse cx="45" cy="65" rx="10" ry="15" fill="#9a3412" opacity="0.9"/>
+                            <path d="M40 25 Q65 20 75 50 Q55 60 40 25 Z" fill="#b91c1c" opacity="0.85"/> 
+                            <path d="M20 20 Q45 10 75 25" stroke="#f8fafc" stroke-width="2" fill="none"/>
+                            
+                            <!-- Haz de luz corregido que atraviesa EXACTAMENTE el hígado, riñón y diafragma -->
+                            <path d="M85 50 L20 20 L25 80 Z" fill="rgba(74, 222, 128, 0.25)"/>
+                            
+                            <!-- Transductor -->
+                            <g transform="translate(85, 50) rotate(-90) scale(-0.25, 0.25) translate(-25, -50)"><use href="#detailed-probe" /></g>
+                        </svg>
+                    </div>
+
+                    <div id="anat-morison-trans" class="absolute inset-0 hidden p-2 flex items-center justify-center view-layer">
+                        <svg class="svg-content font-sans svg-anat-container" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                            <text x="50" y="5" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">ANTERIOR (Ombligo)</text>
+                            <text x="50" y="98" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">POSTERIOR (Espalda)</text>
+                            <text x="5" y="50" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle" transform="rotate(-90 5 50)">DERECHA DEL PACIENTE</text>
+                            <text x="95" y="50" font-size="4" fill="#64748b" text-anchor="middle" transform="rotate(90 95 50)">IZQ. PACIENTE</text>
+                            
+                            <ellipse cx="50" cy="50" rx="40" ry="35" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="2"/>
+                            
+                            <!-- SOMBRA ACÚSTICA ESPINAL -->
+                            <path d="M50 75 L95 60 L95 90 Z" fill="rgba(0,0,0,0.6)" />
+                            <circle cx="50" cy="75" r="5" fill="#94a3b8"/> <!-- Columna -->
+                            
+                            <ellipse cx="32" cy="70" rx="8" ry="10" fill="#9a3412" opacity="0.9" transform="rotate(30 32 70)"/>
+                            <path d="M12 50 Q10 20 55 25 Q45 55 25 55 Z" fill="#b91c1c" opacity="0.85"/>
+                            
+                            <!-- Haz de luz ultra ancho para asegurar que toque la columna en el esquema -->
+                            <path d="M10 50 L95 15 L95 95 Z" fill="rgba(74, 222, 128, 0.25)"/>
+                            
+                            <g transform="translate(10, 50) rotate(90) scale(0.25, 0.25) translate(-25, -50)"><use href="#detailed-probe" /></g>
+                        </svg>
+                    </div>
+
+                    <!-- === ESPLÉNICO === -->
+                    <div id="anat-periesplenico-long" class="absolute inset-0 hidden p-2 flex items-center justify-center view-layer">
+                        <svg class="svg-content font-sans svg-anat-container" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                            <text x="50" y="5" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">CABEZA (Superior)</text>
+                            <text x="50" y="98" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">PIES (Inferior)</text>
+                            <text x="95" y="50" font-size="4" fill="#64748b" text-anchor="middle" transform="rotate(90 95 50)">PROFUNDO (Posterior)</text>
+                            
+                            <path d="M75 15 Q65 50 75 85" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="2"/> 
+                            <ellipse cx="55" cy="70" rx="10" ry="15" fill="#9a3412" opacity="0.9"/> 
+                            <path d="M45 35 Q70 30 75 55 Q55 65 45 35 Z" fill="#6b21a8" opacity="0.85"/> 
+                            <path d="M80 20 Q55 10 25 25" stroke="#f8fafc" stroke-width="2" fill="none"/> 
+                            
+                            <!-- Haz de luz -->
+                            <path d="M15 50 L80 15 L80 85 Z" fill="rgba(74, 222, 128, 0.25)"/> 
+                            <g transform="translate(15, 50) rotate(90) scale(0.25, 0.25) translate(-25, -50)"><use href="#detailed-probe" /></g>
+                        </svg>
+                    </div>
+
+                    <div id="anat-periesplenico-trans" class="absolute inset-0 hidden p-2 flex items-center justify-center view-layer">
+                        <svg class="svg-content font-sans svg-anat-container" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                            <text x="50" y="5" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">ANTERIOR (Ombligo)</text>
+                            <text x="50" y="98" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">POSTERIOR (Espalda)</text>
+                            <text x="5" y="50" font-size="4" fill="#64748b" text-anchor="middle" transform="rotate(-90 5 50)">DER. PACIENTE</text>
+                            <text x="95" y="50" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle" transform="rotate(90 95 50)">IZQ. PACIENTE</text>
+                            
+                            <ellipse cx="50" cy="50" rx="40" ry="35" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="2"/>
+                            
+                            <!-- SOMBRA ACÚSTICA ESPINAL -->
+                            <path d="M50 75 L5 60 L5 90 Z" fill="rgba(0,0,0,0.6)" />
+                            <circle cx="50" cy="75" r="5" fill="#94a3b8"/>
+                            
+                            <ellipse cx="68" cy="70" rx="8" ry="10" fill="#9a3412" opacity="0.9" transform="rotate(-30 68 70)"/> 
+                            <path d="M88 50 Q90 20 45 25 Q55 55 75 55 Z" fill="#6b21a8" opacity="0.85"/> 
+                            
+                            <!-- Haz de luz que toca la columna -->
+                            <path d="M90 50 L5 15 L5 95 Z" fill="rgba(74, 222, 128, 0.25)"/>
+                            <g transform="translate(90, 50) rotate(-90) scale(-0.25, 0.25) translate(-25, -50)"><use href="#detailed-probe" /></g>
+                        </svg>
+                    </div>
+
+                    <!-- === PÉLVICO === -->
+                    <div id="anat-pelvico-long" class="absolute inset-0 hidden p-2 flex items-center justify-center view-layer">
+                        <svg class="svg-content font-sans svg-anat-container" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                            <text x="50" y="5" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">SUPERIOR (Ombligo)</text>
+                            <text x="50" y="98" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">INFERIOR (Pelvis)</text>
+                            <text x="5" y="50" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle" transform="rotate(-90 5 50)">ANTERIOR (Vientre)</text>
+                            
+                            <path d="M15 15 Q20 50 15 85" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="2"/>
+                            <path d="M50 85 Q65 60 80 50" stroke="#9a3412" stroke-width="6" fill="none" opacity="0.8"/>
+                            <circle cx="45" cy="65" r="15" fill="#050505" stroke="#cbd5e1" stroke-width="0.5" opacity="0.9"/>
+                            
+                            <!-- Haz -->
+                            <path d="M15 30 L85 60 L85 100 Z" fill="rgba(74, 222, 128, 0.25)"/> 
+                            <g transform="translate(15, 30) rotate(120) scale(0.25, 0.25) translate(-25, -50)"><use href="#detailed-probe" /></g>
+                        </svg>
+                    </div>
+
+                    <div id="anat-pelvico-trans" class="absolute inset-0 hidden p-2 flex items-center justify-center view-layer">
+                        <svg class="svg-content font-sans svg-anat-container" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                            <text x="50" y="5" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">ANTERIOR (Pubis)</text>
+                            <text x="50" y="98" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">POSTERIOR (Sacro)</text>
+                            <text x="5" y="50" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle" transform="rotate(-90 5 50)">DERECHA DEL PACIENTE</text>
+                            <text x="95" y="50" font-size="4" fill="#64748b" text-anchor="middle" transform="rotate(90 95 50)">IZQ. PACIENTE</text>
+                            
+                            <ellipse cx="50" cy="50" rx="40" ry="35" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="2"/>
+                            <ellipse cx="50" cy="65" rx="15" ry="8" fill="#9a3412" opacity="0.8"/> 
+                            <rect x="30" y="30" width="40" height="20" rx="8" fill="#050505" stroke="#cbd5e1" stroke-width="0.5" opacity="0.9"/>
+                            
+                            <path d="M50 15 L20 85 L80 85 Z" fill="rgba(74, 222, 128, 0.25)"/>
+                            <g transform="translate(50, 15) scale(0.25, -0.25) translate(-25, -50)"><use href="#detailed-probe" /></g>
+                        </svg>
+                    </div>
                 </div>
 
-                <!-- === MORISON === -->
-                <div id="anat-morison-long" class="absolute inset-0 hidden p-2 flex items-center justify-center view-layer">
-                    <svg class="svg-content font-sans svg-anat-container" viewBox="0 0 100 100">
-                        <text x="50" y="5" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">CABEZA (Superior)</text>
-                        <text x="50" y="98" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">PIES (Inferior)</text>
-                        <text x="5" y="50" font-size="4" fill="#64748b" text-anchor="middle" transform="rotate(-90 5 50)">PROFUNDO (Posterior)</text>
-                        
-                        <path d="M25 15 Q35 50 25 85" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="2"/>
-                        <ellipse cx="45" cy="65" rx="10" ry="15" fill="#9a3412" opacity="0.9"/>
-                        <path d="M40 25 Q65 20 75 50 Q55 60 40 25 Z" fill="#b91c1c" opacity="0.85"/> 
-                        <path d="M20 20 Q45 10 75 25" stroke="#f8fafc" stroke-width="2" fill="none"/>
-                        <path d="M90 50 L25 20 L25 80 Z" fill="rgba(74, 222, 128, 0.25)"/>
-                        
-                        <!-- Transductor corregido: Toca en x=85 (piel derecha). Apunta hacia CABEZA. -->
-                        <g transform="translate(85, 50) rotate(-90) scale(-0.25, 0.25) translate(-25, -50)">
-                            <use href="#detailed-probe" />
-                        </g>
-                    </svg>
+                <!-- Zona de texto scrollable -->
+                <div id="explanation-box" class="bg-gray-900 border-t border-gray-600 text-xs sm:text-sm h-32 sm:h-40 overflow-y-auto p-3 flex-shrink-0 relative">
+                    <p class="text-gray-400 text-center mt-6 italic">Arrastra el transductor a una zona en el mapa.</p>
                 </div>
-
-                <div id="anat-morison-trans" class="absolute inset-0 hidden p-2 flex items-center justify-center view-layer">
-                    <svg class="svg-content font-sans svg-anat-container" viewBox="0 0 100 100">
-                        <text x="50" y="5" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">ANTERIOR (Ombligo)</text>
-                        <text x="50" y="98" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">POSTERIOR (Espalda)</text>
-                        <text x="5" y="50" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle" transform="rotate(-90 5 50)">DERECHA DEL PACIENTE</text>
-                        <text x="95" y="50" font-size="4" fill="#64748b" text-anchor="middle" transform="rotate(90 95 50)">IZQ. PACIENTE</text>
-                        
-                        <ellipse cx="50" cy="50" rx="40" ry="35" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="2"/>
-                        <circle cx="50" cy="80" r="5" fill="#94a3b8"/>
-                        <ellipse cx="32" cy="72" rx="8" ry="10" fill="#9a3412" opacity="0.9" transform="rotate(30 32 72)"/>
-                        <path d="M12 50 Q10 20 55 25 Q45 55 25 55 Z" fill="#b91c1c" opacity="0.85"/>
-                        <path d="M10 50 L95 25 L95 75 Z" fill="rgba(74, 222, 128, 0.25)"/>
-                        
-                        <!-- Transductor corregido: En la derecha del paciente (x=10). Apunta hacia ANTERIOR (Arriba) -->
-                        <g transform="translate(10, 50) rotate(90) scale(0.25, 0.25) translate(-25, -50)">
-                            <use href="#detailed-probe" />
-                        </g>
-                    </svg>
-                </div>
-
-                <!-- === ESPLÉNICO === -->
-                <div id="anat-periesplenico-long" class="absolute inset-0 hidden p-2 flex items-center justify-center view-layer">
-                    <svg class="svg-content font-sans svg-anat-container" viewBox="0 0 100 100">
-                        <text x="50" y="5" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">CABEZA (Superior)</text>
-                        <text x="50" y="98" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">PIES (Inferior)</text>
-                        <text x="95" y="50" font-size="4" fill="#64748b" text-anchor="middle" transform="rotate(90 95 50)">PROFUNDO (Posterior)</text>
-                        
-                        <path d="M75 15 Q65 50 75 85" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="2"/> 
-                        <ellipse cx="55" cy="70" rx="10" ry="15" fill="#9a3412" opacity="0.9"/> 
-                        <path d="M45 35 Q70 30 75 55 Q55 65 45 35 Z" fill="#6b21a8" opacity="0.85"/> 
-                        <path d="M80 20 Q55 10 25 25" stroke="#f8fafc" stroke-width="2" fill="none"/> 
-                        <path d="M10 50 L75 20 L75 80 Z" fill="rgba(74, 222, 128, 0.25)"/> 
-                        
-                        <!-- Transductor corregido: Toca en x=15. Apunta hacia CABEZA (Arriba) -->
-                        <g transform="translate(15, 50) rotate(90) scale(0.25, 0.25) translate(-25, -50)">
-                            <use href="#detailed-probe" />
-                        </g>
-                    </svg>
-                </div>
-
-                <div id="anat-periesplenico-trans" class="absolute inset-0 hidden p-2 flex items-center justify-center view-layer">
-                    <svg class="svg-content font-sans svg-anat-container" viewBox="0 0 100 100">
-                        <text x="50" y="5" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">ANTERIOR (Ombligo)</text>
-                        <text x="50" y="98" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">POSTERIOR (Espalda)</text>
-                        <text x="5" y="50" font-size="4" fill="#64748b" text-anchor="middle" transform="rotate(-90 5 50)">DER. PACIENTE</text>
-                        <text x="95" y="50" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle" transform="rotate(90 95 50)">IZQ. PACIENTE</text>
-                        
-                        <ellipse cx="50" cy="50" rx="40" ry="35" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="2"/>
-                        <circle cx="50" cy="80" r="5" fill="#94a3b8"/>
-                        
-                        <ellipse cx="68" cy="72" rx="8" ry="10" fill="#9a3412" opacity="0.9" transform="rotate(-30 68 72)"/> 
-                        <path d="M88 50 Q90 20 45 25 Q55 55 75 55 Z" fill="#6b21a8" opacity="0.85"/> 
-                        
-                        <path d="M90 50 L5 25 L5 75 Z" fill="rgba(74, 222, 128, 0.25)"/>
-                        
-                        <!-- Transductor corregido: Toca en la izquierda del paciente (x=90). Apunta hacia ANTERIOR (Arriba) -->
-                        <g transform="translate(90, 50) rotate(-90) scale(-0.25, 0.25) translate(-25, -50)">
-                            <use href="#detailed-probe" />
-                        </g>
-                    </svg>
-                </div>
-
-                <!-- === PÉLVICO === -->
-                <div id="anat-pelvico-long" class="absolute inset-0 hidden p-2 flex items-center justify-center view-layer">
-                    <svg class="svg-content font-sans svg-anat-container" viewBox="0 0 100 100">
-                        <text x="50" y="5" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">SUPERIOR (Ombligo)</text>
-                        <text x="50" y="98" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">INFERIOR (Pelvis)</text>
-                        <text x="5" y="50" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle" transform="rotate(-90 5 50)">ANTERIOR (Vientre)</text>
-                        
-                        <path d="M15 15 Q20 50 15 85" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="2"/>
-                        <path d="M60 90 Q65 60 80 50" stroke="#9a3412" stroke-width="6" fill="none" opacity="0.8"/>
-                        <circle cx="45" cy="70" r="15" fill="#050505" stroke="#cbd5e1" stroke-width="0.5" opacity="0.9"/>
-                        
-                        <path d="M15 30 L85 60 L85 90 Z" fill="rgba(74, 222, 128, 0.25)"/> 
-                        
-                        <!-- Transductor corregido: Toca el vientre (x=15, y=30). Apunta a SUPERIOR. Cable hacia afuera. -->
-                        <g transform="translate(15, 30) rotate(120) scale(0.25, 0.25) translate(-25, -50)">
-                            <use href="#detailed-probe" />
-                        </g>
-                    </svg>
-                </div>
-
-                <div id="anat-pelvico-trans" class="absolute inset-0 hidden p-2 flex items-center justify-center view-layer">
-                    <svg class="svg-content font-sans svg-anat-container" viewBox="0 0 100 100">
-                        <text x="50" y="5" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">ANTERIOR (Pubis)</text>
-                        <text x="50" y="98" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">POSTERIOR (Sacro)</text>
-                        <text x="5" y="50" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle" transform="rotate(-90 5 50)">DERECHA DEL PACIENTE</text>
-                        <text x="95" y="50" font-size="4" fill="#64748b" text-anchor="middle" transform="rotate(90 95 50)">IZQ. PACIENTE</text>
-                        
-                        <ellipse cx="50" cy="50" rx="40" ry="35" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="2"/>
-                        <ellipse cx="50" cy="65" rx="15" ry="8" fill="#9a3412" opacity="0.8"/> 
-                        <rect x="30" y="30" width="40" height="20" rx="8" fill="#050505" stroke="#cbd5e1" stroke-width="0.5" opacity="0.9"/>
-                        
-                        <path d="M50 15 L20 85 L80 85 Z" fill="rgba(74, 222, 128, 0.25)"/>
-                        
-                        <!-- Transductor corregido: Toca en x=50, y=15. Apunta a DER. PACIENTE (Izquierda del diagrama). -->
-                        <g transform="translate(50, 15) scale(0.25, -0.25) translate(-25, -50)">
-                            <use href="#detailed-probe" />
-                        </g>
-                    </svg>
-                </div>
-
             </div>
         </div>
     </main>
@@ -488,46 +478,53 @@
         const alignBtn = document.getElementById('align-3d-btn');
 
         const texts = {
-            out: "<p class='text-gray-400 text-center mt-6 text-base'>Arrastra el transductor a una zona en el mapa.</p>",
+            out: "<p class='text-gray-400 text-center mt-6 text-base'>Arrastra el transductor a una zona iluminada en el mapa.</p>",
             
-            morison_long: () => `<p class="text-blue-400 font-bold text-lg mb-1 flex justify-between"><span>Morison (Sagital)</span><span class="text-xs ${state.hasPathology ? 'text-red-400' : 'text-green-400'} border px-2 rounded">${state.hasPathology ? 'FAST +' : 'NORMAL'}</span></p>
-                   <ul class="list-disc pl-5 text-sm space-y-1 text-gray-200">
-                       <li><b>Transductor vertical.</b> Marca azul apunta hacia la <b>CABEZA</b>.</li>
-                       <li>Miras el hígado superficial (arriba en pantalla) y el riñón profundo (abajo).</li>
-                       ${state.isAligned3D ? '<li class="text-yellow-300 font-bold">Nota 3D: ¡Mira el Panel 3! Al tumbar al paciente, la marca azul sigue apuntando correctamente a la palabra CABEZA.</li>' : ''}
+            morison_long: () => `<p class="text-blue-400 font-bold mb-1 flex justify-between"><span>Morison (Sagital)</span><span class="text-[10px] ${state.hasPathology ? 'text-red-400' : 'text-green-400'} border px-1 rounded">${state.hasPathology ? 'FAST +' : 'NORMAL'}</span></p>
+                   <ul class="list-disc pl-4 space-y-1 text-gray-200">
+                       <li><b>Transductor vertical.</b> Marca azul hacia la <b>CABEZA</b>.</li>
+                       <li>Miras el hígado superficial (arriba en pantalla) y el riñón profundo (abajo). El haz de luz (verde en la anatomía) atraviesa primero uno y luego el otro.</li>
+                       ${state.isAligned3D ? '<li class="text-yellow-300 font-bold">Nota 3D: ¡Mira la vista 3D! Al alinear el ecógrafo tumbamos la anatomía.</li>' : ''}
                    </ul>`,
-            morison_trans: () => `<p class="text-green-400 font-bold text-lg mb-1">Morison (Axial)</p>
-                   <ul class="list-disc pl-5 text-sm space-y-1 text-gray-200">
-                       <li><b>Transductor horizontal.</b> Marca azul apunta a la <b>DERECHA DEL PACIENTE</b>.</li>
-                       <li>Fíjate en el Panel 3 cómo el punto azul confirma esta regla, apuntando hacia "ANTERIOR" (el techo en la camilla).</li>
+            morison_trans: () => `<p class="text-green-400 font-bold mb-1">Morison (Axial)</p>
+                   <ul class="list-disc pl-4 space-y-1 text-gray-200">
+                       <li><b>Transductor horizontal.</b> Marca azul a la <b>DERECHA DEL PACIENTE</b>.</li>
+                       <li><b>Sombra Acústica:</b> ¡Mira la anatomía 3D! El haz choca con la columna y crea una sombra oscura detrás, exactamente igual a la barra negra que ves abajo en la pantalla del ecógrafo.</li>
                    </ul>`,
 
-            periesplenico_long: () => `<p class="text-blue-400 font-bold text-lg mb-1 flex justify-between"><span>Esplénico (Sagital)</span><span class="text-xs ${state.hasPathology ? 'text-red-400' : 'text-green-400'} border px-2 rounded">${state.hasPathology ? 'FAST +' : 'NORMAL'}</span></p>
-                   <ul class="list-disc pl-5 text-sm space-y-1 text-gray-200">
-                       <li>Marca azul apunta hacia la <b>CABEZA</b> (mira la concordancia en el panel de anatomía).</li>
+            periesplenico_long: () => `<p class="text-blue-400 font-bold mb-1 flex justify-between"><span>Esplénico (Sagital)</span><span class="text-[10px] ${state.hasPathology ? 'text-red-400' : 'text-green-400'} border px-1 rounded">${state.hasPathology ? 'FAST +' : 'NORMAL'}</span></p>
+                   <ul class="list-disc pl-4 space-y-1 text-gray-200">
+                       <li>Marca azul hacia la <b>CABEZA</b>.</li>
                        <li>Buscas sangre negra entre el Bazo y el Riñón izquierdo.</li>
                    </ul>`,
-            periesplenico_trans: () => `<p class="text-green-400 font-bold text-lg mb-1">Esplénico (Axial)</p>
-                   <ul class="list-disc pl-5 text-sm space-y-1 text-gray-200">
-                       <li>Marca azul apunta a la <b>DERECHA DEL PACIENTE</b> (apuntando al techo, porque el transductor está en el flanco izquierdo).</li>
+            periesplenico_trans: () => `<p class="text-green-400 font-bold mb-1">Esplénico (Axial)</p>
+                   <ul class="list-disc pl-4 space-y-1 text-gray-200">
+                       <li>Marca azul a la <b>DERECHA DEL PACIENTE</b>.</li>
+                       <li>Nuevamente, nota la sombra acústica de la columna vertebral.</li>
                    </ul>`,
 
-            pelvico_long: () => `<p class="text-blue-400 font-bold text-lg mb-1 flex justify-between"><span>Pélvico (Sagital)</span><span class="text-xs ${state.hasPathology ? 'text-red-400' : 'text-green-400'} border px-2 rounded">${state.hasPathology ? 'FAST +' : 'NORMAL'}</span></p>
-                   <ul class="list-disc pl-5 text-sm space-y-1 text-gray-200">
-                       <li>Marca azul apunta hacia la <b>SUPERIOR (Ombligo/Cabeza)</b>.</li>
-                       <li>El cable ahora sí sale perfectamente hacia atrás en la vista de anatomía.</li>
+            pelvico_long: () => `<p class="text-blue-400 font-bold mb-1 flex justify-between"><span>Pélvico (Sagital)</span><span class="text-[10px] ${state.hasPathology ? 'text-red-400' : 'text-green-400'} border px-1 rounded">${state.hasPathology ? 'FAST +' : 'NORMAL'}</span></p>
+                   <ul class="list-disc pl-4 space-y-1 text-gray-200">
+                       <li>Marca azul hacia la <b>SUPERIOR (Cabeza)</b>.</li>
+                       <li>La vejiga negra (líquido) permite que el sonido pase perfecto y se ilumine lo que hay detrás (Refuerzo acústico posterior).</li>
                    </ul>`,
-            pelvico_trans: () => `<p class="text-green-400 font-bold text-lg mb-1">Pélvico (Axial)</p>
-                   <ul class="list-disc pl-5 text-sm space-y-1 text-gray-200">
-                       <li>Marca azul apunta a la <b>DERECHA DEL PACIENTE</b>.</li>
-                       <li>La vejiga se ve más cuadrada en este corte transversal.</li>
+            pelvico_trans: () => `<p class="text-green-400 font-bold mb-1">Pélvico (Axial)</p>
+                   <ul class="list-disc pl-4 space-y-1 text-gray-200">
+                       <li>Marca azul a la <b>DERECHA DEL PACIENTE</b>.</li>
+                       <li>La vejiga se ve más cuadrada al cortarla como si fuera un tubo.</li>
                    </ul>`
         };
 
         window.setProtocol = function(protocolName) {
             state.protocol = protocolName;
-            document.getElementById('btn-efast').classList.toggle('active', protocolName === 'efast');
-            document.getElementById('btn-rush').classList.toggle('active', protocolName === 'rush');
+            document.getElementById('btn-efast').classList.toggle('bg-blue-600', protocolName === 'efast');
+            document.getElementById('btn-efast').classList.toggle('text-white', protocolName === 'efast');
+            document.getElementById('btn-efast').classList.toggle('bg-transparent', protocolName !== 'efast');
+            
+            document.getElementById('btn-rush').classList.toggle('bg-blue-600', protocolName === 'rush');
+            document.getElementById('btn-rush').classList.toggle('text-white', protocolName === 'rush');
+            document.getElementById('btn-rush').classList.toggle('bg-transparent', protocolName !== 'rush');
+            
             document.querySelectorAll('.hotspot').forEach(el => {
                 el.classList.toggle('hidden', !el.classList.contains(`protocol-${protocolName}`));
             });
@@ -545,9 +542,7 @@
         alignBtn.addEventListener('click', () => {
             state.isAligned3D = !state.isAligned3D;
             updateDisplays();
-            alignBtn.innerHTML = state.isAligned3D ? 
-                `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg> Restaurar Anatomía` : 
-                `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Alinear con Ecógrafo`;
+            alignBtn.innerHTML = state.isAligned3D ? `Restaurar Anatomía` : `Alinear con Ecógrafo`;
             alignBtn.classList.toggle('bg-green-700', state.isAligned3D);
             alignBtn.classList.toggle('bg-yellow-900/80', !state.isAligned3D);
         });
@@ -557,11 +552,11 @@
             if (state.hasPathology) {
                 pathologyBtn.classList.replace('bg-red-900/80', 'bg-red-600');
                 pathologyBtn.classList.replace('text-red-200', 'text-white');
-                pathologyBtn.innerHTML = `Quitar Sangrado`;
+                pathologyBtn.querySelector('span').innerText = `Quitar Sangrado`;
             } else {
                 pathologyBtn.classList.replace('bg-red-600', 'bg-red-900/80');
                 pathologyBtn.classList.replace('text-white', 'text-red-200');
-                pathologyBtn.innerHTML = `Simular Trauma (FAST +)`;
+                pathologyBtn.querySelector('span').innerText = `Sangrado (FAST +)`;
             }
             updateDisplays();
         });
@@ -570,7 +565,7 @@
             state.isLongitudinal = !state.isLongitudinal;
             probe.classList.toggle('transversal', !state.isLongitudinal);
             statusText.innerText = state.isLongitudinal ? "HACIA CABEZA" : "HACIA DERECHA";
-            statusText.className = state.isLongitudinal ? "font-black text-lg text-blue-400" : "font-black text-lg text-green-400";
+            statusText.className = state.isLongitudinal ? "font-black text-base text-blue-400" : "font-black text-base text-green-400";
             updateDisplays();
         }
 
