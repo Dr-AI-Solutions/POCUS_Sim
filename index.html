@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador POCUS - Orientación Espacial</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilos personalizados para el simulador */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; touch-action: none; }
+        .sim-container { background-color: #1a202c; }
+        
+        /* El transductor */
+        #probe {
+            width: 40px;
+            height: 60px;
+            background-color: #4a5568;
+            border: 2px solid #a0aec0;
+            border-radius: 6px;
+            position: absolute;
+            top: 50%;
+            left: 20px;
+            transform: translate(-50%, -50%);
+            cursor: grab;
+            z-index: 10;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+            transition: transform 0.2s ease, width 0.2s, height 0.2s;
+        }
+        #probe:active { cursor: grabbing; }
+        
+        /* La marca del transductor (El punto guía) */
+        #probe-marker {
+            width: 12px;
+            height: 12px;
+            background-color: #63b3ed;
+            border-radius: 50%;
+            position: absolute;
+            top: -6px; /* Apuntando hacia arriba por defecto (Longitudinal) */
+            left: 12px;
+            box-shadow: 0 0 8px #63b3ed;
+        }
+
+        /* Cuando está en transversal */
+        #probe.transversal {
+            transform: translate(-50%, -50%) rotate(90deg);
+        }
+
+        .hotspot {
+            position: absolute;
+            border: 2px dashed #f56565;
+            background-color: rgba(245, 101, 101, 0.2);
+            border-radius: 8px;
+            transition: background-color 0.3s;
+        }
+        .hotspot.active {
+            background-color: rgba(72, 187, 120, 0.4);
+            border-color: #48bb78;
+        }
+
+        /* Efecto de ruido estático para cuando no hay imagen */
+        .static-noise {
+            background-image: repeating-radial-gradient(circle at 17% 32%, #222, #000 0.00085px);
+            animation: noise 0.5s infinite alternate;
+        }
+        @keyframes noise {
+            0% { background-position: 0 0; }
+            100% { background-position: 10px 10px; }
+        }
+
+        .svg-content { width: 100%; height: 100%; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 h-screen overflow-hidden flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-gray-800 p-4 shadow-md flex justify-between items-center z-20">
+        <div>
+            <h1 class="text-xl font-bold text-blue-400">Simulador POCUS - Ventana Hepatorrenal</h1>
+            <p class="text-sm text-gray-400">Mueve el transductor al cuadrante superior derecho.</p>
+        </div>
+        <div class="flex items-center gap-4">
+            <button id="rotate-btn" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded shadow font-semibold transition">
+                Rotar Transductor (Tecla R)
+            </button>
+            <div class="text-right">
+                <div class="text-xs text-gray-400">Orientación actual:</div>
+                <div id="orientation-status" class="font-bold text-blue-300">LONGITUDINAL</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenedor Principal -->
+    <main class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-1 p-2 bg-black h-full">
+        
+        <!-- PANEL 1: PACIENTE (Mapa) -->
+        <div class="bg-gray-800 rounded-lg relative overflow-hidden border border-gray-700 flex flex-col" id="map-container">
+            <div class="bg-gray-700 text-center py-1 text-sm font-semibold uppercase tracking-wider text-gray-300 z-10 relative">1. Paciente (Vista Anterior)</div>
+            <div class="relative flex-1 w-full h-full flex items-center justify-center">
+                
+                <!-- SVG Torso Simplificado -->
+                <svg class="h-5/6 max-h-full opacity-80" viewBox="0 0 200 400" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Cabeza/Cuello -->
+                    <path d="M80 20 C80 10, 120 10, 120 20 L115 50 L85 50 Z" fill="#cbd5e0" />
+                    <!-- Hombros y torso -->
+                    <path d="M40 70 C40 50, 160 50, 160 70 L170 250 C170 350, 140 380, 100 380 C60 380, 30 350, 30 250 Z" fill="#e2e8f0" stroke="#a0aec0" stroke-width="2"/>
+                    <!-- Brazos cortados -->
+                    <path d="M40 70 L10 150 L25 150 L45 90" fill="#cbd5e0"/>
+                    <path d="M160 70 L190 150 L175 150 L155 90" fill="#cbd5e0"/>
+                    <!-- Ombligo -->
+                    <circle cx="100" cy="260" r="3" fill="#a0aec0"/>
+                    <!-- Referencia Costillas -->
+                    <path d="M50 180 Q100 140 150 180" fill="none" stroke="#a0aec0" stroke-width="2" stroke-dasharray="4"/>
+                </svg>
+
+                <!-- Zona Caliente: Cuadrante Superior Derecho (Morison) -->
+                <div id="zone-morison" class="hotspot" style="top: 40%; left: 15%; width: 50px; height: 70px;">
+                    <div class="text-[10px] text-red-300 text-center mt-1 font-bold">ZONA<br>FAST 1</div>
+                </div>
+
+                <!-- El Transductor (Draggable) -->
+                <div id="probe">
+                    <div id="probe-marker"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL 2: PANTALLA ECOGRAFO -->
+        <div class="bg-black rounded-lg border-2 border-gray-700 flex flex-col relative overflow-hidden">
+            <div class="bg-gray-800 text-center py-1 text-sm font-semibold uppercase tracking-wider text-green-400 z-10 relative flex justify-between px-4">
+                <span>2. Pantalla Ecógrafo</span>
+                <!-- Logo de marca que indica orientación en pantalla -->
+                <div class="w-3 h-3 bg-blue-400 rounded-full mt-1 animate-pulse"></div>
+            </div>
+            
+            <div class="relative flex-1 w-full h-full">
+                
+                <!-- ESTADO: FUERA DE ZONA (Ruido) -->
+                <div id="echo-noise" class="absolute inset-0 static-noise flex items-center justify-center">
+                    <span class="bg-black bg-opacity-50 text-gray-400 px-3 py-1 rounded text-sm">Buscando ventana acústica...</span>
+                </div>
+
+                <!-- ESTADO: LONGITUDINAL -->
+                <div id="echo-long" class="absolute inset-0 hidden bg-black">
+                    <!-- Cono de ultrasonido -->
+                    <svg class="svg-content" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <!-- Sector de visión -->
+                        <path d="M30 0 L70 0 L100 100 L0 100 Z" fill="#111" />
+                        <!-- Diafragma (Línea hipercoica arriba/izquierda) -->
+                        <path d="M10 30 Q30 20 60 40" stroke="#fff" stroke-width="3" fill="none" filter="blur(1px)"/>
+                        <!-- Hígado (Masa gris superior) -->
+                        <path d="M15 35 Q40 25 70 50 Q75 80 40 85 Q15 70 15 35" fill="#333" filter="blur(2px)"/>
+                        <!-- Riñón (Forma de frijol abajo/derecha) -->
+                        <ellipse cx="65" cy="70" rx="20" ry="15" fill="#222" transform="rotate(-20 65 70)" filter="blur(1px)"/>
+                        <!-- Médula renal (centro del riñón más hiperecoico) -->
+                        <ellipse cx="65" cy="70" rx="10" ry="5" fill="#555" transform="rotate(-20 65 70)" filter="blur(2px)"/>
+                        <!-- Espacio de Morison (La línea entre ambos) -->
+                        <path d="M40 85 Q55 70 50 55" stroke="#111" stroke-width="2" fill="none"/>
+                    </svg>
+                    <!-- Etiquetas didácticas superpuestas -->
+                    <div class="absolute top-2 left-8 text-[10px] text-gray-300 bg-black bg-opacity-50 px-1">CABEZA (SUPERIOR)</div>
+                    <div class="absolute bottom-2 right-4 text-[10px] text-gray-300 bg-black bg-opacity-50 px-1">PIES (INFERIOR)</div>
+                    <div class="absolute top-[40%] left-[25%] text-xs text-white">HÍGADO</div>
+                    <div class="absolute top-[70%] left-[60%] text-xs text-white">RIÑÓN</div>
+                    <div class="absolute top-[25%] left-[10%] text-xs text-blue-300">Diafragma</div>
+                </div>
+
+                <!-- ESTADO: TRANSVERSAL -->
+                <div id="echo-trans" class="absolute inset-0 hidden bg-black">
+                    <svg class="svg-content" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <path d="M30 0 L70 0 L100 100 L0 100 Z" fill="#111" />
+                        <!-- Hígado (Lado izquierdo de la pantalla = Derecha del paciente) -->
+                        <path d="M10 20 Q50 20 60 50 Q50 70 10 70 Z" fill="#333" filter="blur(2px)"/>
+                        <!-- Riñón (Corte transversal, se ve redondo al centro) -->
+                        <circle cx="55" cy="60" r="15" fill="#222" filter="blur(1px)"/>
+                        <circle cx="55" cy="60" r="6" fill="#555" filter="blur(2px)"/>
+                        <!-- Sombra acústica de la columna vertebral (abajo centro) -->
+                        <path d="M35 85 Q50 75 65 85 L75 100 L25 100 Z" fill="#000"/>
+                        <!-- Cuerpo vertebral (arco hiperecoico) -->
+                        <path d="M40 85 Q50 80 60 85" stroke="#fff" stroke-width="2" fill="none" filter="blur(1px)"/>
+                    </svg>
+                    <!-- Etiquetas didácticas -->
+                    <div class="absolute top-2 left-8 text-[10px] text-gray-300 bg-black bg-opacity-50 px-1">DERECHA PACIENTE</div>
+                    <div class="absolute top-2 right-8 text-[10px] text-gray-300 bg-black bg-opacity-50 px-1">IZQUIERDA PAC.</div>
+                    <div class="absolute top-[40%] left-[20%] text-xs text-white">HÍGADO</div>
+                    <div class="absolute top-[55%] left-[50%] text-xs text-white">RIÑÓN</div>
+                    <div class="absolute bottom-[2%] left-[40%] text-[10px] text-blue-300">Sombra Columna</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL 3: CORRELATO ANATÓMICO (3D) -->
+        <div class="bg-gray-800 rounded-lg border border-gray-700 flex flex-col relative">
+            <div class="bg-gray-700 text-center py-1 text-sm font-semibold uppercase tracking-wider text-yellow-400 z-10 relative">3. Corte Anatómico (Entendiendo el haz)</div>
+            
+            <!-- Panel de Explicación Textual -->
+            <div id="explanation-box" class="absolute bottom-0 left-0 right-0 bg-gray-900 bg-opacity-90 p-3 z-20 border-t border-gray-600 text-sm h-1/3 overflow-y-auto">
+                <p class="text-gray-300 text-center mt-4">Mueve el transductor a la zona roja para ver el correlato.</p>
+            </div>
+
+            <div class="relative flex-1 w-full h-2/3">
+                
+                <!-- ESTADO: FUERA -->
+                <div id="anat-out" class="absolute inset-0 flex items-center justify-center text-gray-500">
+                    <svg class="w-16 h-16 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+
+                <!-- ESTADO: LONGITUDINAL (Corte Sagital) -->
+                <div id="anat-long" class="absolute inset-0 hidden p-4">
+                    <svg class="svg-content" viewBox="0 0 100 100">
+                        <!-- Contorno Torso Lateral -->
+                        <path d="M20 10 Q30 50 20 90 L80 90 Q70 50 80 10 Z" fill="none" stroke="#a0aec0" stroke-width="1" stroke-dasharray="2"/>
+                        <!-- Hígado (Sagital) -->
+                        <path d="M25 25 Q50 20 60 50 Q40 60 25 25 Z" fill="#9b2c2c" opacity="0.8"/>
+                        <!-- Riñón (Sagital) -->
+                        <ellipse cx="55" cy="65" rx="10" ry="15" fill="#7b341e" opacity="0.8"/>
+                        <!-- Diafragma -->
+                        <path d="M15 20 Q40 10 70 25" stroke="#fff" stroke-width="2" fill="none"/>
+                        <!-- HAZ DE LUZ (Transductor entrando desde la derecha - Anterior) -->
+                        <path d="M90 50 L20 20 L20 80 Z" fill="rgba(72, 187, 120, 0.3)"/>
+                        <!-- Representación Transductor -->
+                        <rect x="85" y="45" width="10" height="10" fill="#4a5568"/>
+                    </svg>
+                </div>
+
+                <!-- ESTADO: TRANSVERSAL (Corte Axial) -->
+                <div id="anat-trans" class="absolute inset-0 hidden p-4">
+                    <svg class="svg-content" viewBox="0 0 100 100">
+                        <!-- Contorno Torso Axial -->
+                        <ellipse cx="50" cy="50" rx="45" ry="35" fill="none" stroke="#a0aec0" stroke-width="1" stroke-dasharray="2"/>
+                        <!-- Columna (Posterior, abajo) -->
+                        <circle cx="50" cy="75" r="5" fill="#cbd5e0"/>
+                        <!-- Hígado (Lado Derecho del paciente = Lado Izquierdo en estándar axial) -->
+                        <path d="M15 50 Q15 25 50 25 Q40 50 15 50 Z" fill="#9b2c2c" opacity="0.8"/>
+                        <!-- Riñón (Derecho) -->
+                        <circle cx="35" cy="60" r="8" fill="#7b341e" opacity="0.8"/>
+                        <!-- HAZ DE LUZ (Entrando desde lateral derecho) -->
+                        <path d="M5 50 L95 20 L95 80 Z" fill="rgba(72, 187, 120, 0.3)"/>
+                        <!-- Representación Transductor (A la izquierda, porque es el lateral derecho del pte) -->
+                        <rect x="0" y="45" width="10" height="10" fill="#4a5568"/>
+                    </svg>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // ESTADO DE LA APLICACIÓN
+        let state = {
+            isLongitudinal: true,
+            currentZone: 'out' // 'out' o 'morison'
+        };
+
+        // ELEMENTOS DEL DOM
+        const probe = document.getElementById('probe');
+        const mapContainer = document.getElementById('map-container');
+        const zoneMorison = document.getElementById('zone-morison');
+        const btnRotate = document.getElementById('rotate-btn');
+        const statusText = document.getElementById('orientation-status');
+        const explanationBox = document.getElementById('explanation-box');
+
+        // Vistas de la pantalla
+        const views = {
+            echo: {
+                out: document.getElementById('echo-noise'),
+                long: document.getElementById('echo-long'),
+                trans: document.getElementById('echo-trans')
+            },
+            anat: {
+                out: document.getElementById('anat-out'),
+                long: document.getElementById('anat-long'),
+                trans: document.getElementById('anat-trans')
+            }
+        };
+
+        // TEXTOS DIDÁCTICOS (Para la Codificación Dual)
+        const texts = {
+            out: "<p class='text-gray-400 text-center mt-2'>Arrastra el transductor hacia el recuadro rojo (flanco derecho) para obtener imagen.</p>",
+            long: `<p class="text-blue-300 font-bold mb-1">Corte Longitudinal (Sagital)</p>
+                   <ul class="list-disc pl-4 text-xs space-y-1 text-gray-300">
+                       <li><b>Marca hacia la cabeza.</b> La izquierda de la pantalla es lo superior (Diafragma).</li>
+                       <li>El haz corta verticalmente. Vemos el hígado descansando sobre el riñón.</li>
+                       <li><b>Uso en FAST:</b> Buscar líquido negro (sangre) en el espacio blanco brillante entre hígado y riñón (Espacio de Morison).</li>
+                   </ul>`,
+            trans: `<p class="text-green-300 font-bold mb-1">Corte Transversal (Axial)</p>
+                   <ul class="list-disc pl-4 text-xs space-y-1 text-gray-300">
+                       <li><b>Marca hacia la derecha del paciente.</b> Rotaste 90° antihorario.</li>
+                       <li>El haz corta horizontalmente. El riñón se ve redondo (como rodaja) y medial al hígado.</li>
+                       <li>La sombra negra profunda inferior es producida por la <b>Columna Vertebral</b>, que bloquea el sonido.</li>
+                   </ul>`
+        };
+
+        // LÓGICA DE ROTACIÓN
+        function toggleRotation() {
+            state.isLongitudinal = !state.isLongitudinal;
+            
+            if (state.isLongitudinal) {
+                probe.classList.remove('transversal');
+                statusText.innerText = "LONGITUDINAL";
+                statusText.className = "font-bold text-blue-300";
+            } else {
+                probe.classList.add('transversal');
+                statusText.innerText = "TRANSVERSAL";
+                statusText.className = "font-bold text-green-300";
+            }
+            updateDisplays();
+        }
+
+        btnRotate.addEventListener('click', toggleRotation);
+        document.addEventListener('keydown', (e) => {
+            if (e.key.toLowerCase() === 'r' || e.code === 'Space') {
+                e.preventDefault();
+                toggleRotation();
+            }
+        });
+
+        // LÓGICA DE ACTUALIZACIÓN VISUAL
+        function updateDisplays() {
+            // Ocultar todo primero
+            Object.values(views.echo).forEach(el => el.classList.add('hidden'));
+            Object.values(views.anat).forEach(el => el.classList.add('hidden'));
+
+            if (state.currentZone === 'out') {
+                views.echo.out.classList.remove('hidden');
+                views.anat.out.classList.remove('hidden');
+                zoneMorison.classList.remove('active');
+                explanationBox.innerHTML = texts.out;
+            } else if (state.currentZone === 'morison') {
+                zoneMorison.classList.add('active');
+                if (state.isLongitudinal) {
+                    views.echo.long.classList.remove('hidden');
+                    views.anat.long.classList.remove('hidden');
+                    explanationBox.innerHTML = texts.long;
+                } else {
+                    views.echo.trans.classList.remove('hidden');
+                    views.anat.trans.classList.remove('hidden');
+                    explanationBox.innerHTML = texts.trans;
+                }
+            }
+        }
+
+        // LÓGICA DE ARRASTRE (DRAG & DROP)
+        let isDragging = false;
+
+        probe.addEventListener('pointerdown', (e) => {
+            isDragging = true;
+            probe.setPointerCapture(e.pointerId);
+        });
+
+        probe.addEventListener('pointermove', (e) => {
+            if (!isDragging) return;
+
+            // Obtener coordenadas relativas al mapa
+            const rect = mapContainer.getBoundingClientRect();
+            let x = e.clientX - rect.left;
+            let y = e.clientY - rect.top;
+
+            // Limitar dentro del contenedor
+            x = Math.max(0, Math.min(x, rect.width));
+            y = Math.max(0, Math.min(y, rect.height));
+
+            probe.style.left = x + 'px';
+            probe.style.top = y + 'px';
+
+            checkIntersection(x, y);
+        });
+
+        probe.addEventListener('pointerup', (e) => {
+            isDragging = false;
+            probe.releasePointerCapture(e.pointerId);
+        });
+
+        // VERIFICAR COLISIÓN CON ZONA CALIENTE
+        function checkIntersection(x, y) {
+            const zoneRect = zoneMorison.getBoundingClientRect();
+            const mapRect = mapContainer.getBoundingClientRect();
+            
+            // Coordenadas relativas de la zona
+            const zLeft = zoneRect.left - mapRect.left;
+            const zRight = zLeft + zoneRect.width;
+            const zTop = zoneRect.top - mapRect.top;
+            const zBottom = zTop + zoneRect.height;
+
+            const wasInZone = state.currentZone === 'morison';
+            const isNowInZone = (x >= zLeft && x <= zRight && y >= zTop && y <= zBottom);
+
+            if (isNowInZone && !wasInZone) {
+                state.currentZone = 'morison';
+                updateDisplays();
+            } else if (!isNowInZone && wasInZone) {
+                state.currentZone = 'out';
+                updateDisplays();
+            }
+        }
+
+        // Iniciar
+        updateDisplays();
+
+    </script>
+</body>
+</html>
