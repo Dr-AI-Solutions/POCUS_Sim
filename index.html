@@ -50,8 +50,10 @@
         }
         @keyframes noise { 0% { background-position: 0 0; } 100% { background-position: 10px 10px; } }
 
-        /* SVG Scaling fixes */
+        /* SVG Scaling fixes para que no se rompa con el Zoom del navegador */
         .svg-content { width: 100%; height: 100%; object-fit: contain; }
+        .view-layer { position: absolute; inset: 0; width: 100%; height: 100%; }
+        
         .svg-anat-container { transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
         .rotate-long { transform: rotate(-90deg) scale(0.85); }
         .rotate-trans { transform: rotate(90deg) scale(0.85); }
@@ -105,14 +107,15 @@
         </div>
     </header>
 
-    <!-- Contenedor Principal (Grid responsive estricto) -->
+    <!-- Contenedor Principal (Grid responsive) -->
     <main class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-1 p-1 bg-black min-h-0 overflow-hidden">
         
         <!-- PANEL 1: MAPA PACIENTE -->
         <div class="bg-gray-800 rounded-lg relative border border-gray-700 flex flex-col min-h-0 select-none overflow-hidden" id="map-container">
             <div class="bg-gray-700 text-center py-1 text-xs font-semibold uppercase text-gray-300 z-10 flex-shrink-0">1. Paciente</div>
-            <div class="relative flex-1 w-full h-full flex items-center justify-center">
-                <svg class="h-[90%] w-[90%] opacity-70" viewBox="0 0 200 400" preserveAspectRatio="xMidYMid meet">
+            <div class="relative flex-1 w-full h-full">
+                <!-- Capa absoluta para contener el SVG y que no rompa el flex -->
+                <svg class="absolute inset-0 w-full h-full opacity-70" viewBox="0 0 200 400" preserveAspectRatio="xMidYMid meet">
                     <path d="M80 20 C80 10, 120 10, 120 20 L115 50 L85 50 Z" fill="#94a3b8" />
                     <path d="M40 70 C40 50, 160 50, 160 70 L170 250 C170 350, 140 380, 100 380 C60 380, 30 350, 30 250 Z" fill="#cbd5e1" stroke="#64748b" stroke-width="2"/>
                     <path d="M40 70 L10 150 L25 150 L45 90" fill="#94a3b8"/>
@@ -122,9 +125,15 @@
                     <path d="M50 160 Q100 120 150 160" fill="none" stroke="#64748b" stroke-width="2" stroke-dasharray="4"/>
                 </svg>
 
+                <!-- ZONAS RESTAURADAS -->
                 <div class="hotspot bg-red-500/20 border-red-400 protocol-efast protocol-rush" data-zone="morison" style="top: 55%; left: 15%; width: 25%; height: 12%;"><span>FLANCO<br>DER.</span></div>
                 <div class="hotspot bg-yellow-500/20 border-yellow-400 protocol-efast protocol-rush" data-zone="periesplenico" style="top: 55%; left: 60%; width: 25%; height: 12%;"><span>FLANCO<br>IZQ.</span></div>
                 <div class="hotspot bg-purple-500/20 border-purple-400 protocol-efast protocol-rush" data-zone="pelvico" style="top: 75%; left: 35%; width: 30%; height: 12%;"><span>PÉLVICA</span></div>
+                
+                <div class="hotspot bg-pink-500/20 border-pink-400 protocol-efast protocol-rush" data-zone="subxifoideo" style="top: 38%; left: 35%; width: 30%; height: 10%;"><span>SUB<br>XIFOIDEA</span></div>
+                <div class="hotspot bg-blue-500/20 border-blue-400 protocol-efast protocol-rush" data-zone="pulmonar-der" style="top: 22%; left: 15%; width: 30%; height: 12%;"><span>PULMÓN<br>DER.</span></div>
+                <div class="hotspot bg-blue-500/20 border-blue-400 protocol-efast protocol-rush" data-zone="pulmonar-izq" style="top: 22%; left: 55%; width: 30%; height: 12%;"><span>PULMÓN<br>IZQ.</span></div>
+                <div class="hotspot bg-orange-500/20 border-orange-400 protocol-rush hidden" data-zone="aorta" style="top: 50%; left: 40%; width: 20%; height: 22%;"><span>AORTA/<br>VCI</span></div>
                 
                 <div id="probe">
                     <svg viewBox="0 0 50 105" class="w-full h-full"><use href="#detailed-probe" /></svg>
@@ -144,25 +153,33 @@
             
             <div class="relative flex-1 w-full h-full" id="echo-container">
                 
-                <div id="echo-noise" class="absolute inset-0 static-noise flex items-center justify-center view-layer">
+                <div class="absolute right-2 top-10 bottom-10 flex flex-col justify-between text-[10px] text-gray-400 font-bold z-10 pointer-events-none opacity-80 items-end w-24">
+                    <div class="bg-black/80 px-1 py-0.5 rounded border border-gray-600 text-right uppercase text-green-300">Superficial<br><span class="text-[8px] font-normal text-gray-400">Transductor ↑</span></div>
+                    <div class="flex-1 w-0.5 bg-gradient-to-b from-green-500/50 via-gray-600/50 to-indigo-500/50 my-1 mr-1"></div>
+                    <div class="bg-black/80 px-1 py-0.5 rounded border border-gray-600 text-right uppercase text-indigo-300">Profundo<br><span class="text-[8px] font-normal text-gray-400">Distal ↓</span></div>
+                </div>
+
+                <div id="echo-noise" class="view-layer static-noise flex items-center justify-center">
                     <span class="bg-black/70 border border-gray-600 text-gray-300 px-4 py-2 rounded text-sm">Arrastra el transductor...</span>
                 </div>
 
+                <!-- VISTA GENÉRICA PARA ZONAS RESTAURADAS EN CONSTRUCCIÓN -->
+                <div id="echo-generic" class="view-layer hidden bg-gray-900 flex flex-col items-center justify-center p-6 text-center">
+                    <svg class="w-16 h-16 text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                    <h3 class="text-xl font-bold text-gray-400 mb-2" id="echo-generic-title">Ventana</h3>
+                    <p class="text-sm text-gray-500 border border-gray-700 p-3 rounded bg-black">Esta ventana ecográfica se añadirá en la próxima actualización.<br><i>¡Aprovecha de practicar la ubicación del transductor!</i></p>
+                </div>
+
                 <!-- ================= VISTAS MORISON ================= -->
-                <!-- TEXTOS INTEGRADOS EN SVG PARA ESCALADO PERFECTO -->
-                <div id="echo-morison-long" class="absolute inset-0 hidden bg-black view-layer">
-                    <svg class="svg-content" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
-                        <!-- Etiquetas Fijas SVG -->
+                <div id="echo-morison-long" class="view-layer hidden bg-black">
+                    <svg class="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
                         <rect x="2" y="2" width="22" height="6" rx="1" fill="rgba(30,58,138,0.7)"/>
                         <text x="13" y="6.2" font-size="3.5" fill="#bfdbfe" font-weight="bold" text-anchor="middle">CABEZA (Sup.)</text>
                         <text x="96" y="6" font-size="3" fill="#9ca3af" text-anchor="end">PIES (Inf.)</text>
                         
                         <path d="M30 0 L70 0 L100 100 L0 100 Z" fill="#111" />
-                        <!-- Diafragma -->
                         <path d="M10 30 Q30 20 60 40" stroke="#fff" stroke-width="3" fill="none" filter="blur(1px)"/>
-                        <!-- Hígado -->
                         <path d="M15 35 Q40 25 70 50 Q75 80 40 85 Q15 70 15 35" fill="#333" filter="blur(2px)"/>
-                        <!-- Morison -->
                         <path class="morison-normal-line" d="M40 85 Q55 70 50 55" stroke="#9ca3af" stroke-width="1.5" fill="none" filter="blur(0.5px)"/>
                         
                         <path class="patho-fluid opacity-0" d="M38 88 Q55 70 48 54 Q65 65 44 92 Z" fill="#000" stroke="#111" stroke-width="1"/>
@@ -184,8 +201,8 @@
                     </svg>
                 </div>
 
-                <div id="echo-morison-trans" class="absolute inset-0 hidden bg-black view-layer">
-                    <svg class="svg-content" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                <div id="echo-morison-trans" class="view-layer hidden bg-black">
+                    <svg class="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
                         <rect x="2" y="2" width="28" height="6" rx="1" fill="rgba(30,58,138,0.7)"/>
                         <text x="16" y="6.2" font-size="3.5" fill="#bfdbfe" font-weight="bold" text-anchor="middle">DER. PACIENTE</text>
                         <text x="96" y="6" font-size="3" fill="#9ca3af" text-anchor="end">IZQ. PACIENTE</text>
@@ -193,7 +210,7 @@
                         <path d="M30 0 L70 0 L100 100 L0 100 Z" fill="#111" />
                         <path d="M10 20 Q50 20 60 50 Q50 70 10 70 Z" fill="#333" filter="blur(2px)"/>
                         <circle cx="55" cy="60" r="15" fill="#222" filter="blur(1px)"/>
-                        <path d="M35 85 Q50 75 65 85 L75 100 L25 100 Z" fill="#000"/> <!-- Sombra negra espinal -->
+                        <path d="M35 85 Q50 75 65 85 L75 100 L25 100 Z" fill="#000"/>
                         
                         <g class="echo-overlay hidden">
                             <path d="M10 20 Q50 20 60 50 Q50 70 10 70 Z" fill="rgba(239, 68, 68, 0.3)"/>
@@ -207,8 +224,8 @@
                 </div>
 
                 <!-- ================= VISTAS ESPLÉNICO ================= -->
-                <div id="echo-periesplenico-long" class="absolute inset-0 hidden bg-black view-layer">
-                    <svg class="svg-content" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                <div id="echo-periesplenico-long" class="view-layer hidden bg-black">
+                    <svg class="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
                         <rect x="2" y="2" width="22" height="6" rx="1" fill="rgba(30,58,138,0.7)"/>
                         <text x="13" y="6.2" font-size="3.5" fill="#bfdbfe" font-weight="bold" text-anchor="middle">CABEZA (Sup.)</text>
                         <text x="96" y="6" font-size="3" fill="#9ca3af" text-anchor="end">PIES (Inf.)</text>
@@ -233,12 +250,13 @@
                                 <text x="58" y="76" font-size="4" fill="#93c5fd" font-weight="bold">Riñón Izq</text>
                             </g>
                             <path d="M10 35 Q25 25 50 40" stroke="rgba(234, 179, 8, 0.6)" stroke-width="3" fill="none"/>
+                            <text x="30" y="32" font-size="3" fill="#fde047" font-weight="bold">Diafragma</text>
                         </g>
                     </svg>
                 </div>
 
-                <div id="echo-periesplenico-trans" class="absolute inset-0 hidden bg-black view-layer">
-                    <svg class="svg-content" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                <div id="echo-periesplenico-trans" class="view-layer hidden bg-black">
+                    <svg class="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
                         <rect x="2" y="2" width="28" height="6" rx="1" fill="rgba(30,58,138,0.7)"/>
                         <text x="16" y="6.2" font-size="3.5" fill="#bfdbfe" font-weight="bold" text-anchor="middle">DER. PACIENTE</text>
                         <text x="96" y="6" font-size="3" fill="#9ca3af" text-anchor="end">IZQ. PACIENTE</text>
@@ -259,8 +277,8 @@
                 </div>
 
                 <!-- ================= VISTAS PÉLVICO ================= -->
-                <div id="echo-pelvico-long" class="absolute inset-0 hidden bg-black view-layer">
-                    <svg class="svg-content" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                <div id="echo-pelvico-long" class="view-layer hidden bg-black">
+                    <svg class="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
                         <rect x="2" y="2" width="22" height="6" rx="1" fill="rgba(30,58,138,0.7)"/>
                         <text x="13" y="6.2" font-size="3.5" fill="#bfdbfe" font-weight="bold" text-anchor="middle">CABEZA (Sup.)</text>
                         <text x="96" y="6" font-size="3" fill="#9ca3af" text-anchor="end">PIES (Inf.)</text>
@@ -284,8 +302,8 @@
                     </svg>
                 </div>
 
-                <div id="echo-pelvico-trans" class="absolute inset-0 hidden bg-black view-layer">
-                    <svg class="svg-content" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                <div id="echo-pelvico-trans" class="view-layer hidden bg-black">
+                    <svg class="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
                         <rect x="2" y="2" width="28" height="6" rx="1" fill="rgba(30,58,138,0.7)"/>
                         <text x="16" y="6.2" font-size="3.5" fill="#bfdbfe" font-weight="bold" text-anchor="middle">DER. PACIENTE</text>
                         <text x="96" y="6" font-size="3" fill="#9ca3af" text-anchor="end">IZQ. PACIENTE</text>
@@ -321,35 +339,34 @@
             
             <div class="relative flex-1 w-full flex flex-col bg-[#0f172a] min-h-0">
                 <!-- Zona gráfica SVG -->
-                <div class="relative flex-1 w-full min-h-0 flex items-center justify-center p-2" id="anat-container">
+                <div class="relative flex-1 w-full min-h-0" id="anat-container">
                     
-                    <div id="anat-out" class="absolute inset-0 flex items-center justify-center view-layer">
+                    <div id="anat-out" class="view-layer flex items-center justify-center">
                         <svg class="w-16 h-16 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
                     </div>
 
                     <!-- === MORISON === -->
-                    <div id="anat-morison-long" class="absolute inset-0 hidden p-2 flex items-center justify-center view-layer">
-                        <svg class="svg-content font-sans svg-anat-container" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                    <div id="anat-morison-long" class="view-layer hidden">
+                        <svg class="absolute inset-0 w-full h-full svg-anat-container" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
                             <text x="50" y="5" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">CABEZA (Superior)</text>
                             <text x="50" y="98" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">PIES (Inferior)</text>
                             <text x="5" y="50" font-size="4" fill="#64748b" text-anchor="middle" transform="rotate(-90 5 50)">PROFUNDO (Posterior)</text>
                             
                             <path d="M25 15 Q35 50 25 85" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="2"/>
-                            <!-- Órganos -->
+                            
                             <ellipse cx="45" cy="65" rx="10" ry="15" fill="#9a3412" opacity="0.9"/>
                             <path d="M40 25 Q65 20 75 50 Q55 60 40 25 Z" fill="#b91c1c" opacity="0.85"/> 
                             <path d="M20 20 Q45 10 75 25" stroke="#f8fafc" stroke-width="2" fill="none"/>
                             
-                            <!-- Haz de luz corregido que atraviesa EXACTAMENTE el hígado, riñón y diafragma -->
-                            <path d="M85 50 L20 20 L25 80 Z" fill="rgba(74, 222, 128, 0.25)"/>
+                            <!-- Haz de luz corregido: Envuelve totalmente la cúpula del diafragma en (20,20) y cruza los órganos -->
+                            <path d="M85 50 L10 10 L25 90 Z" fill="rgba(74, 222, 128, 0.25)"/>
                             
-                            <!-- Transductor -->
                             <g transform="translate(85, 50) rotate(-90) scale(-0.25, 0.25) translate(-25, -50)"><use href="#detailed-probe" /></g>
                         </svg>
                     </div>
 
-                    <div id="anat-morison-trans" class="absolute inset-0 hidden p-2 flex items-center justify-center view-layer">
-                        <svg class="svg-content font-sans svg-anat-container" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                    <div id="anat-morison-trans" class="view-layer hidden">
+                        <svg class="absolute inset-0 w-full h-full svg-anat-container" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
                             <text x="50" y="5" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">ANTERIOR (Ombligo)</text>
                             <text x="50" y="98" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">POSTERIOR (Espalda)</text>
                             <text x="5" y="50" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle" transform="rotate(-90 5 50)">DERECHA DEL PACIENTE</text>
@@ -357,14 +374,14 @@
                             
                             <ellipse cx="50" cy="50" rx="40" ry="35" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="2"/>
                             
-                            <!-- SOMBRA ACÚSTICA ESPINAL -->
+                            <!-- SOMBRA ACÚSTICA -->
                             <path d="M50 75 L95 60 L95 90 Z" fill="rgba(0,0,0,0.6)" />
                             <circle cx="50" cy="75" r="5" fill="#94a3b8"/> <!-- Columna -->
                             
                             <ellipse cx="32" cy="70" rx="8" ry="10" fill="#9a3412" opacity="0.9" transform="rotate(30 32 70)"/>
                             <path d="M12 50 Q10 20 55 25 Q45 55 25 55 Z" fill="#b91c1c" opacity="0.85"/>
                             
-                            <!-- Haz de luz ultra ancho para asegurar que toque la columna en el esquema -->
+                            <!-- Haz de luz -->
                             <path d="M10 50 L95 15 L95 95 Z" fill="rgba(74, 222, 128, 0.25)"/>
                             
                             <g transform="translate(10, 50) rotate(90) scale(0.25, 0.25) translate(-25, -50)"><use href="#detailed-probe" /></g>
@@ -372,8 +389,8 @@
                     </div>
 
                     <!-- === ESPLÉNICO === -->
-                    <div id="anat-periesplenico-long" class="absolute inset-0 hidden p-2 flex items-center justify-center view-layer">
-                        <svg class="svg-content font-sans svg-anat-container" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                    <div id="anat-periesplenico-long" class="view-layer hidden">
+                        <svg class="absolute inset-0 w-full h-full svg-anat-container" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
                             <text x="50" y="5" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">CABEZA (Superior)</text>
                             <text x="50" y="98" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">PIES (Inferior)</text>
                             <text x="95" y="50" font-size="4" fill="#64748b" text-anchor="middle" transform="rotate(90 95 50)">PROFUNDO (Posterior)</text>
@@ -383,14 +400,15 @@
                             <path d="M45 35 Q70 30 75 55 Q55 65 45 35 Z" fill="#6b21a8" opacity="0.85"/> 
                             <path d="M80 20 Q55 10 25 25" stroke="#f8fafc" stroke-width="2" fill="none"/> 
                             
-                            <!-- Haz de luz -->
-                            <path d="M15 50 L80 15 L80 85 Z" fill="rgba(74, 222, 128, 0.25)"/> 
+                            <!-- Haz de luz corregido: Envuelve totalmente el diafragma en (80,20) -->
+                            <path d="M15 50 L90 10 L75 90 Z" fill="rgba(74, 222, 128, 0.25)"/> 
+                            
                             <g transform="translate(15, 50) rotate(90) scale(0.25, 0.25) translate(-25, -50)"><use href="#detailed-probe" /></g>
                         </svg>
                     </div>
 
-                    <div id="anat-periesplenico-trans" class="absolute inset-0 hidden p-2 flex items-center justify-center view-layer">
-                        <svg class="svg-content font-sans svg-anat-container" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                    <div id="anat-periesplenico-trans" class="view-layer hidden">
+                        <svg class="absolute inset-0 w-full h-full svg-anat-container" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
                             <text x="50" y="5" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">ANTERIOR (Ombligo)</text>
                             <text x="50" y="98" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">POSTERIOR (Espalda)</text>
                             <text x="5" y="50" font-size="4" fill="#64748b" text-anchor="middle" transform="rotate(-90 5 50)">DER. PACIENTE</text>
@@ -398,22 +416,22 @@
                             
                             <ellipse cx="50" cy="50" rx="40" ry="35" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="2"/>
                             
-                            <!-- SOMBRA ACÚSTICA ESPINAL -->
+                            <!-- SOMBRA ACÚSTICA -->
                             <path d="M50 75 L5 60 L5 90 Z" fill="rgba(0,0,0,0.6)" />
                             <circle cx="50" cy="75" r="5" fill="#94a3b8"/>
                             
                             <ellipse cx="68" cy="70" rx="8" ry="10" fill="#9a3412" opacity="0.9" transform="rotate(-30 68 70)"/> 
                             <path d="M88 50 Q90 20 45 25 Q55 55 75 55 Z" fill="#6b21a8" opacity="0.85"/> 
                             
-                            <!-- Haz de luz que toca la columna -->
+                            <!-- Haz de luz -->
                             <path d="M90 50 L5 15 L5 95 Z" fill="rgba(74, 222, 128, 0.25)"/>
                             <g transform="translate(90, 50) rotate(-90) scale(-0.25, 0.25) translate(-25, -50)"><use href="#detailed-probe" /></g>
                         </svg>
                     </div>
 
                     <!-- === PÉLVICO === -->
-                    <div id="anat-pelvico-long" class="absolute inset-0 hidden p-2 flex items-center justify-center view-layer">
-                        <svg class="svg-content font-sans svg-anat-container" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                    <div id="anat-pelvico-long" class="view-layer hidden">
+                        <svg class="absolute inset-0 w-full h-full svg-anat-container" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
                             <text x="50" y="5" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">SUPERIOR (Ombligo)</text>
                             <text x="50" y="98" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">INFERIOR (Pelvis)</text>
                             <text x="5" y="50" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle" transform="rotate(-90 5 50)">ANTERIOR (Vientre)</text>
@@ -422,14 +440,13 @@
                             <path d="M50 85 Q65 60 80 50" stroke="#9a3412" stroke-width="6" fill="none" opacity="0.8"/>
                             <circle cx="45" cy="65" r="15" fill="#050505" stroke="#cbd5e1" stroke-width="0.5" opacity="0.9"/>
                             
-                            <!-- Haz -->
                             <path d="M15 30 L85 60 L85 100 Z" fill="rgba(74, 222, 128, 0.25)"/> 
                             <g transform="translate(15, 30) rotate(120) scale(0.25, 0.25) translate(-25, -50)"><use href="#detailed-probe" /></g>
                         </svg>
                     </div>
 
-                    <div id="anat-pelvico-trans" class="absolute inset-0 hidden p-2 flex items-center justify-center view-layer">
-                        <svg class="svg-content font-sans svg-anat-container" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                    <div id="anat-pelvico-trans" class="view-layer hidden">
+                        <svg class="absolute inset-0 w-full h-full svg-anat-container" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
                             <text x="50" y="5" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">ANTERIOR (Pubis)</text>
                             <text x="50" y="98" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle">POSTERIOR (Sacro)</text>
                             <text x="5" y="50" font-size="4" fill="#cbd5e1" font-weight="bold" text-anchor="middle" transform="rotate(-90 5 50)">DERECHA DEL PACIENTE</text>
@@ -445,7 +462,7 @@
                     </div>
                 </div>
 
-                <!-- Zona de texto scrollable -->
+                <!-- Zona de texto -->
                 <div id="explanation-box" class="bg-gray-900 border-t border-gray-600 text-xs sm:text-sm h-32 sm:h-40 overflow-y-auto p-3 flex-shrink-0 relative">
                     <p class="text-gray-400 text-center mt-6 italic">Arrastra el transductor a una zona en el mapa.</p>
                 </div>
@@ -457,7 +474,12 @@
         const zonesConfig = {
             'morison': { name: 'Hepatorrenal (Morison)', hasCustomView: true },
             'periesplenico': { name: 'Periesplénica (Flanco Izq)', hasCustomView: true },
-            'pelvico': { name: 'Pélvica (Suprapúbica)', hasCustomView: true }
+            'pelvico': { name: 'Pélvica (Suprapúbica)', hasCustomView: true },
+            // Zonas restauradas marcadas como "en construcción"
+            'subxifoideo': { name: 'Subxifoidea (Corazón)', hasCustomView: false },
+            'pulmonar-der': { name: 'Pulmón Derecho', hasCustomView: false },
+            'pulmonar-izq': { name: 'Pulmón Izquierdo', hasCustomView: false },
+            'aorta': { name: 'Aorta Abdominal', hasCustomView: false }
         };
 
         let state = {
@@ -480,11 +502,15 @@
         const texts = {
             out: "<p class='text-gray-400 text-center mt-6 text-base'>Arrastra el transductor a una zona iluminada en el mapa.</p>",
             
+            // Texto para zonas en construcción
+            generic: (zoneName) => `<p class="text-blue-400 font-bold mb-1 border-b border-blue-900 pb-1">Ventana: ${zoneName}</p>
+                   <p class="text-gray-300 text-sm mt-2">Ubicación correcta. La simulación 3D para esta ventana está en desarrollo.</p>
+                   <p class="text-gray-400 text-xs mt-2 italic">Aprovecha para memorizar la posición anatómica de este punto en el protocolo ${state.protocol.toUpperCase()}.</p>`,
+
             morison_long: () => `<p class="text-blue-400 font-bold mb-1 flex justify-between"><span>Morison (Sagital)</span><span class="text-[10px] ${state.hasPathology ? 'text-red-400' : 'text-green-400'} border px-1 rounded">${state.hasPathology ? 'FAST +' : 'NORMAL'}</span></p>
                    <ul class="list-disc pl-4 space-y-1 text-gray-200">
                        <li><b>Transductor vertical.</b> Marca azul hacia la <b>CABEZA</b>.</li>
-                       <li>Miras el hígado superficial (arriba en pantalla) y el riñón profundo (abajo). El haz de luz (verde en la anatomía) atraviesa primero uno y luego el otro.</li>
-                       ${state.isAligned3D ? '<li class="text-yellow-300 font-bold">Nota 3D: ¡Mira la vista 3D! Al alinear el ecógrafo tumbamos la anatomía.</li>' : ''}
+                       <li>Miras el hígado superficial (arriba en pantalla) y el riñón profundo (abajo). El haz de luz (verde en la anatomía) atraviesa primero uno y luego el otro, <b>iluminando claramente el diafragma</b> al pasar.</li>
                    </ul>`,
             morison_trans: () => `<p class="text-green-400 font-bold mb-1">Morison (Axial)</p>
                    <ul class="list-disc pl-4 space-y-1 text-gray-200">
@@ -495,7 +521,7 @@
             periesplenico_long: () => `<p class="text-blue-400 font-bold mb-1 flex justify-between"><span>Esplénico (Sagital)</span><span class="text-[10px] ${state.hasPathology ? 'text-red-400' : 'text-green-400'} border px-1 rounded">${state.hasPathology ? 'FAST +' : 'NORMAL'}</span></p>
                    <ul class="list-disc pl-4 space-y-1 text-gray-200">
                        <li>Marca azul hacia la <b>CABEZA</b>.</li>
-                       <li>Buscas sangre negra entre el Bazo y el Riñón izquierdo.</li>
+                       <li>Al igual que en la ventana derecha, nota cómo el haz verde en la anatomía 3D choca con el diafragma en la parte superior izquierda.</li>
                    </ul>`,
             periesplenico_trans: () => `<p class="text-green-400 font-bold mb-1">Esplénico (Axial)</p>
                    <ul class="list-disc pl-4 space-y-1 text-gray-200">
@@ -575,6 +601,7 @@
         });
 
         function updateDisplays() {
+            // Limpiar todo
             document.querySelectorAll('.view-layer').forEach(el => el.classList.add('hidden'));
 
             if (state.currentZone === 'out') {
@@ -583,37 +610,48 @@
                 explanationBox.innerHTML = texts.out;
                 pathologyBtn.classList.add('hidden');
             } else {
-                pathologyBtn.classList.remove('hidden');
-                const orient = state.isLongitudinal ? 'long' : 'trans';
-                const echoId = `echo-${state.currentZone}-${orient}`;
-                const anatId = `anat-${state.currentZone}-${orient}`;
+                const zoneInfo = zonesConfig[state.currentZone];
                 
-                const echoView = document.getElementById(echoId);
-                const anatView = document.getElementById(anatId);
-                
-                if(echoView) echoView.classList.remove('hidden');
-                if(anatView) anatView.classList.remove('hidden');
-                
-                explanationBox.innerHTML = texts[`${state.currentZone}_${orient}`]();
+                if (zoneInfo.hasCustomView) {
+                    pathologyBtn.classList.remove('hidden');
+                    const orient = state.isLongitudinal ? 'long' : 'trans';
+                    const echoId = `echo-${state.currentZone}-${orient}`;
+                    const anatId = `anat-${state.currentZone}-${orient}`;
+                    
+                    const echoView = document.getElementById(echoId);
+                    const anatView = document.getElementById(anatId);
+                    
+                    if(echoView) echoView.classList.remove('hidden');
+                    if(anatView) anatView.classList.remove('hidden');
+                    
+                    explanationBox.innerHTML = texts[`${state.currentZone}_${orient}`]();
 
-                if (echoView) {
-                    echoView.querySelectorAll('.patho-fluid').forEach(el => {
-                        state.hasPathology ? el.classList.remove('opacity-0') : el.classList.add('opacity-0');
-                    });
-                    echoView.querySelectorAll('.shift-organ').forEach(el => {
-                        el.setAttribute('transform', state.hasPathology ? el.dataset.shift : el.dataset.normal);
-                    });
-                    echoView.querySelectorAll('.echo-overlay').forEach(el => {
-                        state.guidesVisible ? el.classList.remove('hidden') : el.classList.add('hidden');
-                    });
-                }
-
-                if (anatView) {
-                    const svgAnat = anatView.querySelector('.svg-anat-container');
-                    if (svgAnat) {
-                        svgAnat.classList.toggle('rotate-long', state.isAligned3D && state.isLongitudinal);
-                        svgAnat.classList.toggle('rotate-trans', state.isAligned3D && !state.isLongitudinal);
+                    if (echoView) {
+                        echoView.querySelectorAll('.patho-fluid').forEach(el => {
+                            state.hasPathology ? el.classList.remove('opacity-0') : el.classList.add('opacity-0');
+                        });
+                        echoView.querySelectorAll('.shift-organ').forEach(el => {
+                            el.setAttribute('transform', state.hasPathology ? el.dataset.shift : el.dataset.normal);
+                        });
+                        echoView.querySelectorAll('.echo-overlay').forEach(el => {
+                            state.guidesVisible ? el.classList.remove('hidden') : el.classList.add('hidden');
+                        });
                     }
+
+                    if (anatView) {
+                        const svgAnat = anatView.querySelector('.svg-anat-container');
+                        if (svgAnat) {
+                            svgAnat.classList.toggle('rotate-long', state.isAligned3D && state.isLongitudinal);
+                            svgAnat.classList.toggle('rotate-trans', state.isAligned3D && !state.isLongitudinal);
+                        }
+                    }
+                } else {
+                    // Zona Genérica (En construcción)
+                    pathologyBtn.classList.add('hidden');
+                    document.getElementById('echo-generic').classList.remove('hidden');
+                    document.getElementById('anat-out').classList.remove('hidden');
+                    document.getElementById('echo-generic-title').innerText = zoneInfo.name;
+                    explanationBox.innerHTML = texts.generic(zoneInfo.name);
                 }
             }
         }
